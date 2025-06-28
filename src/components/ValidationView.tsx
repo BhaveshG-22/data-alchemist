@@ -3,13 +3,15 @@
 import { useState, useEffect, useCallback } from 'react';
 import TabbedDataView from './TabbedDataView';
 import IssuesSidebar from './IssuesSidebar';
+import RuleInputUI from './RuleInputUI';
 // import ValidationSummary from './ValidationSummary';
 import { parseFile, ParsedData } from '@/utils/fileParser';
 import { 
   runAllValidations,
   ValidationIssue,
   ValidatorContext,
-  ParsedData as ValidatedParsedData
+  ParsedData as ValidatedParsedData,
+  BusinessRule
 } from '@/validators';
 
 interface ValidationViewProps {
@@ -67,6 +69,8 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
   const [hoveredIssue, setHoveredIssue] = useState<{ row: number; column: string; issueType?: 'error' | 'warning' | 'info'; category?: string } | null>(null);
   const [hoverTimeout, setHoverTimeout] = useState<NodeJS.Timeout | null>(null);
   const [targetRow, setTargetRow] = useState<number | undefined>(undefined);
+  const [businessRules, setBusinessRules] = useState<BusinessRule[]>([]);
+  const [showRuleInput, setShowRuleInput] = useState(false);
   const [showColumnMappingDialog, setShowColumnMappingDialog] = useState(false);
   const [columnMappingSuggestions, setColumnMappingSuggestions] = useState<{
     mappings: Array<{ originalHeader: string; suggestedHeader: string; confidence: number; reasoning: string }>;
@@ -77,7 +81,7 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
   const [currentMappingFile, setCurrentMappingFile] = useState<'clients' | 'workers' | 'tasks' | null>(null);
 
   // New modular validation using the validators module
-  const validateData = useCallback((parsedData: { clients: ParsedData | null; workers: ParsedData | null; tasks: ParsedData | null }): ValidationIssue[] => {
+  const validateData = useCallback((parsedData: { clients: ParsedData | null; workers: ParsedData | null; tasks: ParsedData | null }, rules: BusinessRule[] = []): ValidationIssue[] => {
     console.log('🔍 Starting modular validation...');
     
     // Convert ParsedData to ValidatedParsedData format
@@ -110,12 +114,16 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
     // Create validation context
     const context: ValidatorContext = {
       data: validationData,
+      rules: rules.filter(rule => rule.active), // Only pass active rules
       config: {
         strictMode: false,
         autoFix: false,
         skipWarnings: false
       }
     };
+
+    console.log('📊 Validation context:', context);
+    console.log('📋 Active business rules:', rules.filter(rule => rule.active));
 
     // Run validation
     const result = runAllValidations(context);
@@ -326,7 +334,7 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
       });
 
       // Validate data using the new modular system
-      const allIssues = validateData(newParsedData);
+      const allIssues = validateData(newParsedData, businessRules);
 
       // Always store the parsed data (whether AI-enhanced or not)
       setParsedData(newParsedData);
@@ -346,7 +354,7 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
         setValidationIssues(allIssues);
         setLoading(false);
       }
-    }, [uploadedFiles, validateData, getColumnMappingSuggestions, applyColumnMappings]);
+    }, [uploadedFiles, validateData, getColumnMappingSuggestions, applyColumnMappings, businessRules]);
 
   useEffect(() => {
     parseFiles();
@@ -370,7 +378,7 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
     setParsedData(updatedParsedData);
 
     // Re-validate all data when it changes using the new system
-    const newIssues = validateData(updatedParsedData);
+    const newIssues = validateData(updatedParsedData, businessRules);
     setValidationIssues(newIssues);
   };
 
@@ -494,7 +502,7 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
       setParsedData(updatedParsedData);
       
       // Re-validate with the new data
-      const newIssues = validateData(updatedParsedData);
+      const newIssues = validateData(updatedParsedData, businessRules);
       setValidationIssues(newIssues);
     }
 
@@ -502,7 +510,7 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
     setShowColumnMappingDialog(false);
     setColumnMappingSuggestions(null);
     setCurrentMappingFile(null);
-  }, [columnMappingSuggestions, currentMappingFile, parsedData, applyColumnMappings, validateData]);
+  }, [columnMappingSuggestions, currentMappingFile, parsedData, applyColumnMappings, validateData, businessRules]);
 
   const handleRejectMappings = useCallback(() => {
     console.log('❌ User rejected AI column mappings');
@@ -517,9 +525,29 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
     setParsingSummary(null);
     
     // Re-validate the already stored data and set validation issues
-    const allIssues = validateData(parsedData);
+    const allIssues = validateData(parsedData, businessRules);
+    setValidationIssues(allIssues);
+  }, [parsedData, validateData, businessRules]);
+
+  // Handle business rule changes
+  const handleRulesChange = useCallback((newRules: BusinessRule[]) => {
+    setBusinessRules(newRules);
+    
+    // Re-validate data with new rules
+    const allIssues = validateData(parsedData, newRules);
     setValidationIssues(allIssues);
   }, [parsedData, validateData]);
+
+  // Get available task IDs from parsed data
+  const getAvailableTaskIds = useCallback((): string[] => {
+    if (!parsedData.tasks || !parsedData.tasks.headers.includes('TaskID')) {
+      return [];
+    }
+    
+    return parsedData.tasks.rows
+      .map(row => String(row.TaskID || '').trim())
+      .filter(taskId => taskId !== '');
+  }, [parsedData.tasks]);
 
   if (loading) {
     return (
@@ -679,24 +707,53 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
               <p className="text-sm text-gray-600">Review and validate your uploaded data files</p>
             </div>
           </div>
-          <button 
-            onClick={onProceed}
-            disabled={validationIssues.some(issue => issue.type === 'error')}
-            className={`px-6 py-2 rounded-lg font-medium transition-colors ${
-              validationIssues.some(issue => issue.type === 'error')
-                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                : 'bg-blue-600 text-white hover:bg-blue-700'
-            }`}
-          >
-            Proceed to Analysis
-          </button>
+          <div className="flex items-center space-x-3">
+            <button
+              onClick={() => setShowRuleInput(!showRuleInput)}
+              className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2 ${
+                showRuleInput
+                  ? 'bg-purple-600 text-white hover:bg-purple-700'
+                  : 'bg-white text-purple-600 border border-purple-600 hover:bg-purple-50'
+              }`}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              <span>{showRuleInput ? 'Hide Rules' : 'Business Rules'}</span>
+              {businessRules.length > 0 && (
+                <span className="bg-white text-purple-600 px-2 py-0.5 rounded-full text-xs font-bold">
+                  {businessRules.filter(r => r.active).length}
+                </span>
+              )}
+            </button>
+            <button 
+              onClick={onProceed}
+              disabled={validationIssues.some(issue => issue.type === 'error')}
+              className={`px-6 py-2 rounded-lg font-medium transition-colors ${
+                validationIssues.some(issue => issue.type === 'error')
+                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  : 'bg-blue-600 text-white hover:bg-blue-700'
+              }`}
+            >
+              Proceed to Analysis
+            </button>
+          </div>
         </div>
       </div>
 
       {/* Main Content */}
       <div className="flex-1 flex overflow-hidden">
         {/* Main Data View */}
-        <div className="flex-1 p-6">
+        <div className="flex-1 p-6 space-y-6">
+          {/* Rule Input UI */}
+          {showRuleInput && (
+            <RuleInputUI
+              rules={businessRules}
+              onRulesChange={handleRulesChange}
+              availableTasks={getAvailableTaskIds()}
+            />
+          )}
+          
           {/* Validation Summary */}
           {/* <ValidationSummary 
             issues={validationIssues} 
