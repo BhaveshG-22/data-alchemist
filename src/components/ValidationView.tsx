@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import TabbedDataView from './TabbedDataView';
 import IssuesSidebar from './IssuesSidebar';
+import ValidationSummary from './ValidationSummary';
 import { parseFile, ParsedData } from '@/utils/fileParser';
 import { 
   runAllValidations,
@@ -176,8 +177,44 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
   };
 
   const handleIssueClick = (issue: ValidationIssue) => {
-    // Handle clicking on an issue in the sidebar
     console.log('Issue clicked:', issue);
+    
+    // Clear any existing timeout
+    if (hoverTimeout) {
+      clearTimeout(hoverTimeout);
+      setHoverTimeout(null);
+    }
+
+    // Handle header row highlighting (row = -1) for missing columns
+    if (issue.row === -1 && issue.column) {
+      // Highlight the header for missing/unexpected columns
+      setHighlightedHeaders([{ header: issue.column }]);
+      
+      // Set timeout to auto-remove highlight after 4 seconds
+      const timeoutId = setTimeout(() => {
+        setHighlightedHeaders([]);
+        setHoverTimeout(null);
+      }, 4000);
+      
+      setHoverTimeout(timeoutId);
+    }
+    // Handle regular cell highlighting
+    else if (issue.row !== undefined && issue.column) {
+      setHoveredIssue({ row: issue.row, column: issue.column });
+      
+      // Set timeout to auto-remove hover after 4 seconds
+      const timeoutId = setTimeout(() => {
+        setHoveredIssue(null);
+        setHoverTimeout(null);
+      }, 4000);
+      
+      setHoverTimeout(timeoutId);
+    }
+    
+    // Switch to the relevant tab if needed
+    if (issue.sheet && issue.sheet !== activeTab) {
+      setActiveTab(issue.sheet as 'clients' | 'workers' | 'tasks');
+    }
   };
 
   const handleIssueHover = (issue: ValidationIssue) => {
@@ -211,137 +248,13 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
     setHoveredIssue(null);
   };
 
-  const parseAIFix = (aiSuggestion: string): { action: string; value: string; fromValue?: string } | null => {
-    if (!aiSuggestion) return null;
-    
-    try {
-      // Extract fix value from AI response format: 💡 **Fix**: [value]
-      const fixMatch = aiSuggestion.match(/💡\s*\*\*Fix\*\*:\s*([^\n]*)/i);
-      const actionMatch = aiSuggestion.match(/📋\s*\*\*Action\*\*:\s*([^\n]*)/i);
-      
-      if (fixMatch) {
-        const fixValue = fixMatch[1].trim().replace(/^["\[]*|["\]]*$/g, ''); // Remove quotes/brackets
-        const actionText = actionMatch ? actionMatch[1].trim() : '';
-        
-        // Parse different action types
-        if (actionText.toLowerCase().includes('rename')) {
-          // Extract "from" value for rename actions
-          const renameMatch = actionText.match(/rename\s+([^\s]+)\s+to/i);
-          const fromValue = renameMatch ? renameMatch[1].trim() : undefined;
-          return { action: 'rename', value: fixValue, fromValue };
-        } else if (actionText.toLowerCase().includes('add')) {
-          return { action: 'add', value: fixValue };
-        } else {
-          return { action: 'replace', value: fixValue };
-        }
-      }
-      
-      return null;
-    } catch (error) {
-      console.error('Error parsing AI fix:', error);
-      return null;
-    }
-  };
-
-  const applyFixToData = (issue: ValidationIssue, parsedFix: { action: string; value: string; fromValue?: string }) => {
-    if (!parsedData || !issue.sheet) return;
-    
-    const { action, value, fromValue } = parsedFix;
-    const sheetName = issue.sheet as 'clients' | 'workers' | 'tasks';
-    
-    if (!parsedData[sheetName]) {
-      console.error('Sheet not found:', sheetName);
-      return;
-    }
-    
-    const sheetData = parsedData[sheetName]!;
-    const updatedSheetData = { ...sheetData };
-    
-    try {
-      if (issue.category === 'missing_columns' && action === 'rename' && fromValue) {
-        // Rename header: find similar header and rename it
-        const currentHeaders = [...updatedSheetData.headers];
-        const similarHeaderIndex = currentHeaders.findIndex((h: string) => 
-          h.toLowerCase().includes(fromValue.toLowerCase()) || 
-          fromValue.toLowerCase().includes(h.toLowerCase())
-        );
-        
-        if (similarHeaderIndex !== -1) {
-          // Update header
-          currentHeaders[similarHeaderIndex] = value;
-          
-          // Update all row data
-          const updatedRows = updatedSheetData.rows.map((row: any) => {
-            const newRow = { ...row };
-            const oldKey = updatedSheetData.headers[similarHeaderIndex];
-            if (oldKey in newRow) {
-              newRow[value] = newRow[oldKey];
-              delete newRow[oldKey];
-            }
-            return newRow;
-          });
-          
-          updatedSheetData.headers = currentHeaders;
-          updatedSheetData.rows = updatedRows;
-          
-          console.log(`✅ Renamed header "${updatedSheetData.headers[similarHeaderIndex]}" to "${value}"`);
-        }
-      } else if (issue.category === 'missing_columns' && action === 'add') {
-        // Add new header with empty values
-        if (!updatedSheetData.headers.includes(value)) {
-          updatedSheetData.headers.push(value);
-          updatedSheetData.rows = updatedSheetData.rows.map((row: any) => ({ ...row, [value]: '' }));
-          console.log(`✅ Added new column "${value}"`);
-        }
-      } else if (issue.row !== undefined && issue.column && (action === 'replace' || action === 'fix')) {
-        // Fix cell value
-        if (updatedSheetData.rows[issue.row] && issue.column in updatedSheetData.rows[issue.row]) {
-          const updatedRows = [...updatedSheetData.rows];
-          updatedRows[issue.row] = { ...updatedRows[issue.row], [issue.column]: value };
-          updatedSheetData.rows = updatedRows;
-          console.log(`✅ Fixed cell [${issue.row}, ${issue.column}] to "${value}"`);
-        }
-      }
-      
-      // Update the data using the correct handler
-      handleDataChange(sheetName)(updatedSheetData);
-      
-      // Set visual feedback
-      if (issue.column) {
-        if (issue.row !== undefined) {
-          setHighlightedCells([{ row: issue.row, column: issue.column }]);
-        } else {
-          setHighlightedCells([]);
-        }
-        setTimeout(() => setHighlightedCells([]), 2000);
-      }
-      
-    } catch (error) {
-      console.error('Error applying fix:', error);
-    }
-  };
-
   const handleApplyAIFix = async (issue: ValidationIssue, aiSuggestion?: string) => {
-    console.log('Applying AI fix for:', issue);
-    console.log('AI suggestion received:', aiSuggestion);
+    console.log('AI fix not implemented for missing columns - this is a detection-only validation');
+    console.log('Issue:', issue);
+    console.log('AI suggestion:', aiSuggestion);
     
-    if (!aiSuggestion) {
-      console.error('No AI suggestion provided');
-      return;
-    }
-    
-    // Parse the AI suggestion to extract actionable fix
-    const parsedFix = parseAIFix(aiSuggestion);
-    
-    if (!parsedFix) {
-      console.error('Could not parse AI suggestion:', aiSuggestion);
-      return;
-    }
-    
-    console.log('Parsed fix:', parsedFix);
-    
-    // Apply the fix to the data
-    applyFixToData(issue, parsedFix);
+    // For missing columns, we only detect and report - no auto-fixing
+    // Users should manually add the missing columns to their spreadsheet
   };
 
   // Clean up helper function that's still needed
@@ -399,6 +312,12 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
       <div className="flex-1 flex overflow-hidden">
         {/* Main Data View */}
         <div className="flex-1 p-6">
+          {/* Validation Summary */}
+          {/* <ValidationSummary 
+            issues={validationIssues} 
+            onIssueClick={handleIssueClick}
+          /> */}
+          
           <TabbedDataView
             parsedData={parsedData}
             errors={errors}
