@@ -11,7 +11,7 @@ const RANGE_VALIDATIONS: Record<string, Record<string, Range>> = {
     QualificationLevel: { min: 1, max: 10 },
   },
   tasks: {
-    Duration: { min: 0.1 },
+    Duration: { min: 1 },
     MaxConcurrent: { min: 1 },
   },
 };
@@ -40,7 +40,7 @@ export function validateOutOfRange(context: ValidatorContext): ValidationIssue[]
               `Invalid number '${value}' in ${column} at row ${i + 1}`,
               {
                 sheet: sheetName,
-                row: i + 1,
+                row: i,
                 column,
                 value,
                 type: 'error',
@@ -60,7 +60,7 @@ export function validateOutOfRange(context: ValidatorContext): ValidationIssue[]
               `Value ${numValue} in ${column} at row ${i + 1} is out of range ${rangeText}`,
               {
                 sheet: sheetName,
-                row: i + 1,
+                row: i,
                 column,
                 value,
                 type: 'error',

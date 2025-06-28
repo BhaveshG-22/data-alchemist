@@ -7,38 +7,48 @@ export function validateSkillCoverage(context: ValidatorContext): ValidationIssu
 
   if (!data.tasks || !data.workers) return issues;
 
-  // Get all required skills from tasks
-  const requiredSkills = new Set<string>();
-  for (const task of data.tasks.rows) {
-    const skills = getColumnValue(task, 'RequiredSkills');
-    if (skills && typeof skills === 'string') {
-      skills.split(',').forEach(skill => requiredSkills.add(skill.trim().toLowerCase()));
-    }
-  }
-
   // Get all available skills from workers
   const availableSkills = new Set<string>();
   for (const worker of data.workers.rows) {
     const skills = getColumnValue(worker, 'Skills');
     if (skills && typeof skills === 'string') {
-      skills.split(',').forEach(skill => availableSkills.add(skill.trim().toLowerCase()));
+      skills
+        .split(',')
+        .map(skill => skill.trim().toLowerCase())
+        .forEach(skill => availableSkills.add(skill));
     }
   }
 
-  // Check for uncovered skills
-  for (const skill of requiredSkills) {
-    if (!availableSkills.has(skill)) {
-      issues.push(
-        createValidationIssue(
-          'skill_coverage',
-          `Required skill '${skill}' is not available in any worker`,
-          {
-            type: 'warning',
-            suggestion: `Add a worker with '${skill}' skill or remove tasks requiring this skill`,
-            fixable: false,
-          }
-        )
-      );
+  // Check every RequiredSkill in tasks
+  for (let i = 0; i < data.tasks.rows.length; i++) {
+    const row = data.tasks.rows[i];
+    const skills = getColumnValue(row, 'RequiredSkills');
+
+    if (skills && typeof skills === 'string') {
+      const requiredList = skills
+        .split(',')
+        .map(skill => skill.trim().toLowerCase())
+        .filter(Boolean);
+
+      for (const skill of requiredList) {
+        if (!availableSkills.has(skill)) {
+          issues.push(
+            createValidationIssue(
+              'skill_coverage',
+              `Required skill '${skill}' in task at row ${i + 1} is not available in any worker`,
+              {
+                sheet: 'tasks',
+                row: i + 1,
+                column: 'RequiredSkills',
+                value: skill,
+                type: 'warning',
+                suggestion: `Add a worker with '${skill}' skill or remove this task requirement`,
+                fixable: false,
+              }
+            )
+          );
+        }
+      }
     }
   }
 

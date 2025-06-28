@@ -10,8 +10,9 @@ interface EditableDataTableProps {
   title: string;
   highlightedCells?: Array<{ row: number; column: string }>;
   highlightedHeaders?: Array<{ sheet: string; header: string }>;
-  hoveredCell?: { row: number; column: string } | null;
+  hoveredCell?: { row: number; column: string; issueType?: 'error' | 'warning' | 'info'; category?: string } | null;
   onHighlightComplete?: () => void;
+  targetRow?: number; // Row to navigate to
 }
 
 interface EditableColumn {
@@ -23,7 +24,7 @@ interface EditableColumn {
   style?: Record<string, string | number>;
 }
 
-export default function EditableDataTable({ data, onDataChange, title, highlightedCells = [], highlightedHeaders = [], hoveredCell, onHighlightComplete }: EditableDataTableProps) {
+export default function EditableDataTable({ data, onDataChange, title, highlightedCells = [], highlightedHeaders = [], hoveredCell, onHighlightComplete, targetRow }: EditableDataTableProps) {
   const [tableData, setTableData] = useState(data.rows);
   const [editingCell, setEditingCell] = useState<{ rowIndex: number; column: string } | null>(null);
   const [editingHeader, setEditingHeader] = useState<string | null>(null);
@@ -31,6 +32,62 @@ export default function EditableDataTable({ data, onDataChange, title, highlight
   const [flashingHeaders, setFlashingHeaders] = useState<Set<string>>(new Set());
   const [headerKey, setHeaderKey] = useState(0);
   const [sortConfig, setSortConfig] = useState<{ column: string; direction: 'asc' | 'desc' } | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(15);
+
+  // Navigate to specific row when targetRow changes
+  useEffect(() => {
+    if (targetRow !== undefined && targetRow >= 0) {
+      const targetPage = Math.ceil((targetRow + 1) / rowsPerPage);
+      console.log(`🧭 Navigating to page ${targetPage} for row ${targetRow + 1} (rows per page: ${rowsPerPage})`);
+      setCurrentPage(targetPage);
+    }
+  }, [targetRow, rowsPerPage]);
+
+  // Color mapping for different issue types and categories
+  const getIssueHoverColors = (issueType?: 'error' | 'warning' | 'info', category?: string) => {
+    if (!issueType) return 'bg-yellow-100 border-yellow-400'; // Default yellow
+
+    switch (issueType) {
+      case 'error':
+        switch (category) {
+          case 'missing_columns':
+            return 'bg-red-100 border-red-400'; // Red for missing columns
+          case 'duplicate_ids':
+            return 'bg-pink-100 border-pink-400'; // Pink for duplicates
+          case 'malformed_lists':
+            return 'bg-orange-100 border-orange-400'; // Orange for malformed data
+          case 'out_of_range':
+            return 'bg-red-200 border-red-500'; // Darker red for range errors
+          case 'json_fields':
+            return 'bg-purple-100 border-purple-400'; // Purple for JSON errors
+          case 'references':
+            return 'bg-indigo-100 border-indigo-400'; // Indigo for reference errors
+          default:
+            return 'bg-red-100 border-red-400'; // Default red for errors
+        }
+      case 'warning':
+        switch (category) {
+          case 'overloaded_workers':
+            return 'bg-amber-100 border-amber-400'; // Amber for capacity warnings
+          case 'skill_coverage':
+            return 'bg-blue-100 border-blue-400'; // Blue for skill issues
+          case 'phase_saturation':
+            return 'bg-cyan-100 border-cyan-400'; // Cyan for phase issues
+          default:
+            return 'bg-yellow-100 border-yellow-400'; // Default yellow for warnings
+        }
+      case 'info':
+        switch (category) {
+          case 'concurrency_feasibility':
+            return 'bg-green-100 border-green-400'; // Green for info about concurrency
+          default:
+            return 'bg-gray-100 border-gray-400'; // Gray for general info
+        }
+      default:
+        return 'bg-yellow-100 border-yellow-400'; // Fallback
+    }
+  };
 
   useEffect(() => {
     console.log('EditableDataTable: Data changed, headers:', data.headers);
@@ -230,6 +287,7 @@ export default function EditableDataTable({ data, onDataChange, title, highlight
     const cellKey = `${rowIndex}-${column}`;
     const isFlashing = flashingCells.has(cellKey);
     const isHovered = hoveredCell?.row === rowIndex && hoveredCell?.column === column;
+    const hoverColors = isHovered ? getIssueHoverColors(hoveredCell?.issueType, hoveredCell?.category) : '';
 
     if (isEditing) {
       return (
@@ -256,7 +314,7 @@ export default function EditableDataTable({ data, onDataChange, title, highlight
           isFlashing
             ? 'bg-green-200 border-green-400 animate-pulse shadow-lg'
             : isHovered
-            ? 'bg-yellow-100 border-yellow-400 shadow-md'
+            ? `${hoverColors} shadow-md`
             : 'bg-transparent border-transparent hover:bg-gray-100'
         }`}
         title="Click to edit"
@@ -357,13 +415,20 @@ export default function EditableDataTable({ data, onDataChange, title, highlight
         </div>
 
         <DataTable
+          key={`datatable-${currentPage}-${rowsPerPage}-${targetRow || 0}`}
           columns={columns}
           data={tableData}
           noHeader={true}
           customStyles={customStyles}
           pagination
-          paginationPerPage={15}
+          paginationPerPage={rowsPerPage}
           paginationRowsPerPageOptions={[10, 15, 25, 50]}
+          paginationDefaultPage={currentPage}
+          onChangePage={setCurrentPage}
+          onChangeRowsPerPage={(newRowsPerPage) => {
+            setRowsPerPage(newRowsPerPage);
+            setCurrentPage(1); // Reset to first page when changing rows per page
+          }}
           highlightOnHover
           responsive
           dense

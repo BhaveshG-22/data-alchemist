@@ -16,16 +16,16 @@ import { validateSkillCoverage } from './validateSkillCoverage';
 import { validateConcurrencyFeasibility } from './validateConcurrencyFeasibility';
 
 const VALIDATORS = [
-  // validateMissingColumns, DONE
-  // validateDuplicateIDs,DONE
-  // validateMalformedLists,DONE
-  // validateOutOfRange,
-  // validateJSONFields,  DONE
-  // validateReferences, DONE
+  validateMissingColumns, // DONE
+  validateDuplicateIDs,// DONE
+  validateMalformedLists,// DONE
+  validateOutOfRange, // DONE
+  validateJSONFields,  // DONE
+  validateReferences, // DONE
   validateCircularCoRun,
-  // validateConflictingRules,
-  // validateOverloadedWorkers,
-  // validatePhaseSaturation,
+  // // validateConflictingRules,
+  // // validateOverloadedWorkers,
+  // // validatePhaseSaturation,
   // validateSkillCoverage,
   // validateConcurrencyFeasibility,
 ];

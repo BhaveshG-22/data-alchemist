@@ -19,11 +19,12 @@ interface TabbedDataViewProps {
   onTabChange?: (tab: 'clients' | 'workers' | 'tasks') => void;
   highlightedCells?: Array<{ row: number; column: string }>;
   highlightedHeaders?: Array<{ sheet: string; header: string }>;
-  hoveredCell?: { row: number; column: string } | null;
+  hoveredCell?: { row: number; column: string; issueType?: 'error' | 'warning' | 'info'; category?: string } | null;
   onHighlightComplete?: () => void;
+  targetRow?: number;
 }
 
-export default function TabbedDataView({ parsedData, errors, onDataChange, onTabChange, highlightedCells, highlightedHeaders, hoveredCell, onHighlightComplete }: TabbedDataViewProps) {
+export default function TabbedDataView({ parsedData, errors, onDataChange, onTabChange, highlightedCells, highlightedHeaders, hoveredCell, onHighlightComplete, targetRow }: TabbedDataViewProps) {
   const [activeTab, setActiveTab] = useState<'clients' | 'workers' | 'tasks'>('clients');
 
   const handleTabChange = (tab: 'clients' | 'workers' | 'tasks') => {
@@ -112,6 +113,7 @@ export default function TabbedDataView({ parsedData, errors, onDataChange, onTab
               highlightedHeaders={highlightedHeaders?.filter(h => h.sheet === activeTab)}
               hoveredCell={hoveredCell}
               onHighlightComplete={onHighlightComplete}
+              targetRow={targetRow}
             />
           </div>
         ) : (
@@ -132,7 +134,24 @@ export default function TabbedDataView({ parsedData, errors, onDataChange, onTab
         <div className="border-t border-gray-200 bg-gray-50 px-6 py-3">
           <div className="flex items-center justify-between text-sm text-gray-600">
             <span>{activeTabData.data.rows.length} rows × {activeTabData.data.headers.length} columns</span>
-            <span>Click on any cell to edit • Press Enter to save</span>
+            <div className="flex items-center space-x-4">
+              <span>Click on any cell to edit • Press Enter to save</span>
+              <div className="flex items-center space-x-2 text-xs">
+                <span>Hover colors:</span>
+                <div className="flex items-center space-x-1">
+                  <div className="w-3 h-3 bg-red-100 border border-red-400 rounded"></div>
+                  <span>Errors</span>
+                </div>
+                <div className="flex items-center space-x-1">
+                  <div className="w-3 h-3 bg-yellow-100 border border-yellow-400 rounded"></div>
+                  <span>Warnings</span>
+                </div>
+                <div className="flex items-center space-x-1">
+                  <div className="w-3 h-3 bg-gray-100 border border-gray-400 rounded"></div>
+                  <span>Info</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}

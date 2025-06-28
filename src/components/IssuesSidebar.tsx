@@ -27,6 +27,27 @@ export default function IssuesSidebar({ issues, parsedData, activeTab, onIssueCl
   
   const [loadingAI, setLoadingAI] = useState<number | null>(null);
   const [aiSuggestions, setAiSuggestions] = useState<Record<number, string>>({});
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
+
+  // Group issues by category
+  const groupedIssues = filteredIssues.reduce((acc, issue) => {
+    const category = issue.category;
+    if (!acc[category]) {
+      acc[category] = [];
+    }
+    acc[category].push(issue);
+    return acc;
+  }, {} as Record<string, ValidationIssue[]>);
+
+  const toggleCategory = (category: string) => {
+    const newExpanded = new Set(expandedCategories);
+    if (newExpanded.has(category)) {
+      newExpanded.delete(category);
+    } else {
+      newExpanded.add(category);
+    }
+    setExpandedCategories(newExpanded);
+  };
 
   const handleAIFix = async (issue: ValidationIssue, index: number) => {
     setLoadingAI(index);
@@ -48,55 +69,36 @@ export default function IssuesSidebar({ issues, parsedData, activeTab, onIssueCl
         };
         
         const required = requiredColumns[sheetName as keyof typeof requiredColumns] || [];
+        const missing = required.filter(col => !currentHeaders.includes(col));
+        const unexpected = currentHeaders.filter(col => !required.includes(col));
         
-        // Get missing/unexpected columns from the issue data
-        const missingColumns = (issue as any).missingColumns || [];
-        const unexpectedColumns = (issue as any).unexpectedColumns || [];
-        
-        // Get sample data from ALL columns (first 5 rows for comprehensive analysis)
-        const sampleData: Record<string, any[]> = {};
-        currentHeaders.forEach(column => {
-          sampleData[column] = currentData.rows
-            .slice(0, 5)
-            .map(row => row[column])
-            .filter(val => val !== undefined && val !== null && val !== '');
+        // Create sample data for better AI context
+        const sampleData: Record<string, unknown[]> = {};
+        currentHeaders.forEach(header => {
+          sampleData[header] = currentData.rows.slice(0, 3).map(row => row[header]);
         });
         
         additionalContext = {
-          missingColumns,
-          unexpectedColumns,
-          sampleData,
+          currentHeaders,
           requiredHeaders: required,
-          sheet: issue.sheet
+          missingColumns: missing,
+          unexpectedColumns: unexpected,
+          sampleData
         };
       }
-      
-      // Prepare request payload
-      const requestBody = {
-        issue,
-        currentHeaders,
-        ...additionalContext,
-        sampleData: issue.row !== undefined && issue.column ? {
-          currentValue: currentData?.rows?.[issue.row - 1]?.[issue.column] || 'Empty'
-        } : ('sampleData' in additionalContext ? additionalContext.sampleData : null)
-      };
 
-      // Call the AI API
       const response = await fetch('/api/ai-fix', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestBody),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ issue, ...additionalContext })
       });
 
       if (!response.ok) {
-        throw new Error(`API Error: ${response.status}`);
+        throw new Error(`HTTP ${response.status}`);
       }
 
       const data = await response.json();
       
-      // Set the AI suggestion
       setAiSuggestions(prev => ({ 
         ...prev, 
         [index]: data.suggestion 
@@ -200,6 +202,37 @@ export default function IssuesSidebar({ issues, parsedData, activeTab, onIssueCl
     }
   };
 
+  const getCategoryDisplayName = (category: ValidationIssue['category']) => {
+    switch (category) {
+      case 'missing_columns':
+        return 'Missing Columns';
+      case 'duplicate_ids':
+        return 'Duplicate IDs';
+      case 'malformed_lists':
+        return 'Malformed Lists';
+      case 'out_of_range':
+        return 'Out of Range';
+      case 'json_fields':
+        return 'JSON Fields';
+      case 'references':
+        return 'References';
+      case 'circular_corun':
+        return 'Circular Dependencies';
+      case 'conflicting_rules':
+        return 'Conflicting Rules';
+      case 'overloaded_workers':
+        return 'Overloaded Workers';
+      case 'phase_saturation':
+        return 'Phase Saturation';
+      case 'skill_coverage':
+        return 'Skill Coverage';
+      case 'concurrency_feasibility':
+        return 'Concurrency Issues';
+      default:
+        return String(category).replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase());
+    }
+  };
+
   const currentData = parsedData[activeTab];
 
   return (
@@ -244,112 +277,195 @@ export default function IssuesSidebar({ issues, parsedData, activeTab, onIssueCl
           </div>
         ) : (
           <div className="p-2 space-y-2">
-            {filteredIssues.map((issue, index) => (
-              <div
-                key={index}
-                className="border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors overflow-hidden"
-                onMouseEnter={() => onIssueHover?.(issue)}
-                onMouseLeave={() => onIssueUnhover?.()}
-              >
-                <div 
-                  onClick={() => onIssueClick?.(issue)}
-                  className="p-3 cursor-pointer"
-                >
-                  <div className="flex items-start space-x-3">
-                    <div className="flex-shrink-0 mt-0.5">
-                      {getIssueIcon(issue.type)}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center space-x-2 mb-1">
-                        <span className="text-xs">{getCategoryIcon(issue.category)}</span>
-                        <span className="text-xs font-medium text-gray-600 capitalize">
-                          {issue.category}
-                        </span>
-                        {issue.type === 'error' && (
-                          <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                            Error
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-sm text-gray-900 mb-1">{issue.message}</p>
-                      {(issue.row !== undefined || issue.column) && (
-                        <div className="text-xs text-gray-500">
-                          {issue.row !== undefined && `Row ${issue.row + 1}`}
-                          {issue.row !== undefined && issue.column && ' • '}
-                          {issue.column && `Column: ${issue.column}`}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* AI Fix Button */}
-                <div className="px-3 pb-3">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleAIFix(issue, index);
-                    }}
-                    disabled={loadingAI === index}
-                    className="w-full bg-blue-600 text-white text-xs py-2 px-3 rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            {Object.entries(groupedIssues).map(([category, categoryIssues]) => {
+              const isExpanded = expandedCategories.has(category);
+              const categoryErrorCount = categoryIssues.filter(issue => issue.type === 'error').length;
+              const categoryWarningCount = categoryIssues.filter(issue => issue.type === 'warning').length;
+              const categoryInfoCount = categoryIssues.filter(issue => issue.type === 'info').length;
+              
+              return (
+                <div key={category} className="border border-gray-200 rounded-lg overflow-hidden">
+                  {/* Accordion Header */}
+                  <div 
+                    onClick={() => toggleCategory(category)}
+                    className="bg-gray-50 border-b border-gray-200 p-3 cursor-pointer hover:bg-gray-100 transition-colors"
                   >
-                    {loadingAI === index ? (
-                      <div className="flex items-center justify-center space-x-2">
-                        <div className="animate-spin rounded-full h-3 w-3 border border-white border-t-transparent"></div>
-                        <span>Loading...</span>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <span className="text-lg">{getCategoryIcon(category as ValidationIssue['category'])}</span>
+                        <div>
+                          <h4 className="text-sm font-medium text-gray-900">
+                            {getCategoryDisplayName(category as ValidationIssue['category'])}
+                          </h4>
+                          <div className="flex items-center space-x-3 text-xs text-gray-600 mt-1">
+                            {categoryErrorCount > 0 && (
+                              <div className="flex items-center space-x-1">
+                                <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                                <span>{categoryErrorCount} errors</span>
+                              </div>
+                            )}
+                            {categoryWarningCount > 0 && (
+                              <div className="flex items-center space-x-1">
+                                <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
+                                <span>{categoryWarningCount} warnings</span>
+                              </div>
+                            )}
+                            {categoryInfoCount > 0 && (
+                              <div className="flex items-center space-x-1">
+                                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                                <span>{categoryInfoCount} info</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
                       </div>
-                    ) : (
-                      <>
-                      <FontAwesomeIcon icon={faMicrochip} className="ml-1 scale-125 mr-2" />  Ask AI 
-                      </>
-                    )}
-                  </button>
-                </div>
-
-                {/* AI Suggestion */}
-                {aiSuggestions[index] && (
-                  <div className="border-t border-gray-100 bg-gradient-to-r from-purple-50 to-blue-50 p-3">
-                    <div className="text-xs text-gray-700 whitespace-pre-line mb-3">
-                      {aiSuggestions[index]}
-                    </div>
-                    
-                    {/* Action Buttons */}
-                    <div className="flex space-x-2">
-                      <button
-                        onClick={() => {
-                          onApplyFix?.(issue, aiSuggestions[index]);
-                          setAiSuggestions(prev => {
-                            const newSuggestions = { ...prev };
-                            delete newSuggestions[index];
-                            return newSuggestions;
-                          });
-                        }}
-                        className="flex-1 bg-green-600 text-white text-xs py-2 px-3 rounded-md hover:bg-green-700 transition-colors flex items-center justify-center space-x-1"
-                      >
-                        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      <div className="flex items-center space-x-2">
+                        <span className="text-xs bg-gray-200 text-gray-700 px-2 py-1 rounded-full">
+                          {categoryIssues.length}
+                        </span>
+                        <svg 
+                          className={`w-4 h-4 text-gray-500 transform transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                          fill="none" 
+                          stroke="currentColor" 
+                          viewBox="0 0 24 24"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                         </svg>
-                        <span>Apply Fix</span>
-                      </button>
-                      
-                      <button
-                        onClick={() => setAiSuggestions(prev => {
-                          const newSuggestions = { ...prev };
-                          delete newSuggestions[index];
-                          return newSuggestions;
-                        })}
-                        className="flex-1 bg-gray-600 text-white text-xs py-2 px-3 rounded-md hover:bg-gray-700 transition-colors flex items-center justify-center space-x-1"
-                      >
-                        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                        </svg>
-                        <span>Handle Manually</span>
-                      </button>
+                      </div>
                     </div>
                   </div>
-                )}
-              </div>
-            ))}
+
+                  {/* Accordion Content */}
+                  {isExpanded && (
+                    <div className="space-y-2 p-2">
+                      {categoryIssues.map((issue, issueIndex) => {
+                        const globalIndex = filteredIssues.findIndex(i => i === issue);
+                        return (
+                          <div
+                            key={`${category}-${issueIndex}`}
+                            className="border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors overflow-hidden"
+                            onMouseEnter={() => onIssueHover?.(issue)}
+                            onMouseLeave={() => onIssueUnhover?.()}
+                          >
+                            <div 
+                              onClick={() => onIssueClick?.(issue)}
+                              className="p-3 cursor-pointer"
+                            >
+                              <div className="flex items-start space-x-3">
+                                <div className="flex-shrink-0 mt-0.5">
+                                  {getIssueIcon(issue.type)}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center space-x-2 mb-1">
+                                    {issue.type === 'error' && (
+                                      <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                        Error
+                                      </span>
+                                    )}
+                                    {issue.type === 'warning' && (
+                                      <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                        Warning
+                                      </span>
+                                    )}
+                                    {issue.type === 'info' && (
+                                      <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                        Info
+                                      </span>
+                                    )}
+                                  </div>
+                                  <p className="text-sm text-gray-900 mb-1">{issue.message}</p>
+                                  {(issue.row !== undefined || issue.column) && (
+                                    <div className="text-xs text-gray-500">
+                                      {issue.row !== undefined && (
+                                        <>
+                                          <span>Row {issue.row + 1}</span>
+                                          <span className="ml-2 px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded text-xs">
+                                            Page {Math.ceil((issue.row + 1) / 15)}
+                                          </span>
+                                        </>
+                                      )}
+                                      {issue.row !== undefined && issue.column && ' • '}
+                                      {issue.column && `Column: ${issue.column}`}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* AI Fix Button */}
+                            <div className="px-3 pb-3">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleAIFix(issue, globalIndex);
+                                }}
+                                disabled={loadingAI === globalIndex}
+                                className="w-full bg-blue-600 text-white text-xs py-2 px-3 rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                {loadingAI === globalIndex ? (
+                                  <div className="flex items-center justify-center space-x-2">
+                                    <div className="animate-spin rounded-full h-3 w-3 border border-white border-t-transparent"></div>
+                                    <span>Loading...</span>
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center justify-center space-x-2">
+                                    <FontAwesomeIcon icon={faMicrochip} className="w-3 h-3" />
+                                    <span>Ask AI</span>
+                                  </div>
+                                )}
+                              </button>
+                            </div>
+
+                            {/* AI Suggestion */}
+                            {aiSuggestions[globalIndex] && (
+                              <div className="border-t border-gray-100 bg-gradient-to-r from-purple-50 to-blue-50 p-3">
+                                <div className="text-xs text-gray-700 whitespace-pre-line mb-3">
+                                  {aiSuggestions[globalIndex]}
+                                </div>
+                                
+                                {/* Action Buttons */}
+                                <div className="flex space-x-2">
+                                  <button
+                                    onClick={() => {
+                                      onApplyFix?.(issue, aiSuggestions[globalIndex]);
+                                      setAiSuggestions(prev => {
+                                        const newSuggestions = { ...prev };
+                                        delete newSuggestions[globalIndex];
+                                        return newSuggestions;
+                                      });
+                                    }}
+                                    className="flex-1 bg-green-600 text-white text-xs py-2 px-3 rounded-md hover:bg-green-700 transition-colors flex items-center justify-center space-x-1"
+                                  >
+                                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                    </svg>
+                                    <span>Apply Fix</span>
+                                  </button>
+                                  
+                                  <button
+                                    onClick={() => setAiSuggestions(prev => {
+                                      const newSuggestions = { ...prev };
+                                      delete newSuggestions[globalIndex];
+                                      return newSuggestions;
+                                    })}
+                                    className="flex-1 bg-gray-600 text-white text-xs py-2 px-3 rounded-md hover:bg-gray-700 transition-colors flex items-center justify-center space-x-1"
+                                  >
+                                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                    </svg>
+                                    <span>Handle Manually</span>
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
       </div>

@@ -38,6 +38,15 @@ export interface ParsedData {
 export interface ValidatorContext {
   data: ParsedData;
   config?: ValidationConfig;
+  rules?: BusinessRule[];
+}
+
+export interface BusinessRule {
+  id: string;
+  type: 'coRun' | 'conflicting' | 'priority' | 'resource';
+  tasks: string[];
+  description?: string;
+  active: boolean;
 }
 
 export interface ValidationConfig {

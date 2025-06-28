@@ -64,8 +64,9 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
   const [validationIssues, setValidationIssues] = useState<ValidationIssue[]>([]);
   const [highlightedCells, setHighlightedCells] = useState<Array<{ row: number; column: string }>>([]);
   const [highlightedHeaders, setHighlightedHeaders] = useState<Array<{ sheet: string; header: string }>>([]);
-  const [hoveredIssue, setHoveredIssue] = useState<{ row: number; column: string } | null>(null);
+  const [hoveredIssue, setHoveredIssue] = useState<{ row: number; column: string; issueType?: 'error' | 'warning' | 'info'; category?: string } | null>(null);
   const [hoverTimeout, setHoverTimeout] = useState<NodeJS.Timeout | null>(null);
+  const [targetRow, setTargetRow] = useState<number | undefined>(undefined);
   const [showColumnMappingDialog, setShowColumnMappingDialog] = useState(false);
   const [columnMappingSuggestions, setColumnMappingSuggestions] = useState<{
     mappings: Array<{ originalHeader: string; suggestedHeader: string; confidence: number; reasoning: string }>;
@@ -382,6 +383,11 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
       setHoverTimeout(null);
     }
 
+    // Switch to the relevant tab first if needed
+    if (issue.sheet && issue.sheet !== activeTab) {
+      setActiveTab(issue.sheet as 'clients' | 'workers' | 'tasks');
+    }
+
     // Handle header row highlighting (row = -1) for missing columns
     if (issue.row === -1 && issue.column && issue.sheet) {
       // Highlight the header for missing/unexpected columns
@@ -395,22 +401,26 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
       
       setHoverTimeout(timeoutId);
     }
-    // Handle regular cell highlighting
+    // Handle regular cell highlighting and navigation
     else if (issue.row !== undefined && issue.column) {
-      setHoveredIssue({ row: issue.row, column: issue.column });
+      // Navigate to the page containing this row
+      setTargetRow(issue.row);
+      
+      setHoveredIssue({ 
+        row: issue.row, 
+        column: issue.column, 
+        issueType: issue.type,
+        category: issue.category 
+      });
       
       // Set timeout to auto-remove hover after 4 seconds
       const timeoutId = setTimeout(() => {
         setHoveredIssue(null);
+        setTargetRow(undefined);
         setHoverTimeout(null);
       }, 4000);
       
       setHoverTimeout(timeoutId);
-    }
-    
-    // Switch to the relevant tab if needed
-    if (issue.sheet && issue.sheet !== activeTab) {
-      setActiveTab(issue.sheet as 'clients' | 'workers' | 'tasks');
     }
   };
 
@@ -423,7 +433,12 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
 
     // Only highlight if the issue has a specific row and column
     if (issue.row !== undefined && issue.column) {
-      setHoveredIssue({ row: issue.row, column: issue.column });
+      setHoveredIssue({ 
+        row: issue.row, 
+        column: issue.column, 
+        issueType: issue.type,
+        category: issue.category 
+      });
       
       // Set timeout to auto-remove hover after 4 seconds
       const timeoutId = setTimeout(() => {
@@ -697,6 +712,7 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
             highlightedHeaders={highlightedHeaders}
             hoveredCell={hoveredIssue}
             onHighlightComplete={handleHighlightComplete}
+            targetRow={targetRow}
           />
         </div>
 
