@@ -14,8 +14,8 @@ interface EditableDataTableProps {
 
 interface EditableColumn {
   name: string;
-  selector: (row: any) => any;
-  cell: (row: any, index: number) => React.ReactElement;
+  selector: (row: Record<string, unknown>) => string;
+  cell: (row: Record<string, unknown>, index: number) => React.ReactElement;
   sortable: boolean;
   width?: string;
 }
@@ -65,9 +65,9 @@ export default function EditableDataTable({ data, onDataChange, title, highlight
     setEditingCell(null);
   };
 
-  const renderEditableCell = (row: any, rowIndex: number, column: string) => {
+  const renderEditableCell = (row: Record<string, unknown>, rowIndex: number, column: string) => {
     const isEditing = editingCell?.rowIndex === rowIndex && editingCell?.column === column;
-    const value = row[column] || '';
+    const value = String(row[column] || '');
     const cellKey = `${rowIndex}-${column}`;
     const isFlashing = flashingCells.has(cellKey);
 
@@ -106,8 +106,8 @@ export default function EditableDataTable({ data, onDataChange, title, highlight
 
   const columns: EditableColumn[] = data.headers.map(header => ({
     name: header,
-    selector: (row: any) => row[header],
-    cell: (row: any, index: number) => {
+    selector: (row: Record<string, unknown>) => String(row[header] || ''),
+    cell: (row: Record<string, unknown>) => {
       // Find the actual row index in the data
       const actualRowIndex = tableData.findIndex(dataRow => dataRow === row);
       return renderEditableCell(row, actualRowIndex, header);

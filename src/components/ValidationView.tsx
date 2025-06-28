@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import TabbedDataView from './TabbedDataView';
 import IssuesSidebar, { ValidationIssue } from './IssuesSidebar';
 import { parseFile, ParsedData } from '@/utils/fileParser';
@@ -42,13 +42,13 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
   const [highlightedCells, setHighlightedCells] = useState<Array<{ row: number; column: string }>>([]);
 
   // Required headers for each sheet type
-  const requiredHeaders = {
+  const requiredHeaders = useMemo(() => ({
     clients: ['ClientID', 'ClientName', 'PriorityLevel', 'RequestedTaskIDs', 'GroupTag', 'AttributesJSON'],
     workers: ['WorkerID', 'WorkerName', 'Skills', 'AvailableSlots', 'MaxLoadPerPhase', 'WorkerGroup', 'QualificationLevel'],
     tasks: ['TaskID', 'TaskName', 'Category', 'Duration', 'RequiredSkills', 'PreferredPhases', 'MaxConcurrent']
-  };
+  }), []);
 
-  const validateData = (data: ParsedData, type: 'clients' | 'workers' | 'tasks'): ValidationIssue[] => {
+  const validateData = useCallback((data: ParsedData, type: 'clients' | 'workers' | 'tasks'): ValidationIssue[] => {
     const issues: ValidationIssue[] = [];
     const required = requiredHeaders[type];
     
@@ -95,9 +95,9 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
 
         // Validate AttributesJSON
         const attributesJSON = row['AttributesJSON'];
-        if (attributesJSON && attributesJSON.trim() !== '') {
+        if (attributesJSON && String(attributesJSON).trim() !== '') {
           try {
-            JSON.parse(attributesJSON);
+            JSON.parse(String(attributesJSON));
           } catch {
             issues.push({
               type: 'error',
@@ -129,9 +129,9 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
 
         // Validate AvailableSlots (array format)
         const availableSlots = row['AvailableSlots'];
-        if (availableSlots && availableSlots.trim() !== '') {
+        if (availableSlots && String(availableSlots).trim() !== '') {
           try {
-            const parsed = JSON.parse(availableSlots);
+            const parsed = JSON.parse(String(availableSlots));
             if (!Array.isArray(parsed) || !parsed.every(slot => Number.isInteger(slot))) {
               throw new Error('Invalid format');
             }
@@ -199,10 +199,9 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
     });
 
     return issues;
-  };
+  }, [requiredHeaders]);
 
-  useEffect(() => {
-    const parseFiles = async () => {
+  const parseFiles = useCallback(async () => {
       setLoading(true);
       const newParsedData: {
         clients: ParsedData | null;
@@ -259,10 +258,11 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
       setErrors(newErrors);
       setValidationIssues(allIssues);
       setLoading(false);
-    };
+    }, [uploadedFiles, validateData]);
 
+  useEffect(() => {
     parseFiles();
-  }, [uploadedFiles]);
+  }, [uploadedFiles, parseFiles]);
 
   const handleDataChange = (type: 'clients' | 'workers' | 'tasks') => (newData: ParsedData) => {
     setParsedData(prev => ({
@@ -285,38 +285,157 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
     console.log('Issue clicked:', issue);
   };
 
-  const handleApplyAIFix = (issue: ValidationIssue) => {
+  const handleApplyAIFix = (issue: ValidationIssue, aiSuggestion?: string) => {
     console.log('Applying AI fix for:', issue);
     
-    // Simulate applying a fix and highlight the changed cells
     const changedCells: Array<{ row: number; column: string }> = [];
+    const currentData = parsedData[issue.sheet];
     
+    if (!currentData) return;
+    
+    const newData = { ...currentData };
+    const newRows = [...newData.rows];
+    
+    // Apply fixes based on issue category
     if (issue.category === 'data' && issue.row !== undefined && issue.column) {
-      // For data issues, highlight the specific cell that was fixed
       changedCells.push({ row: issue.row, column: issue.column });
       
-      // Apply the actual fix to the data
-      const currentData = parsedData[issue.sheet];
-      if (currentData) {
-        const newData = { ...currentData };
-        const newRows = [...newData.rows];
-        
-        // Example fixes based on issue type
-        if (issue.message.includes('PriorityLevel')) {
-          newRows[issue.row] = { ...newRows[issue.row], [issue.column]: '3' }; // Set to medium priority
-        } else if (issue.message.includes('Empty required field')) {
-          // Provide a default value based on column type
-          const defaultValue = getDefaultValueForColumn(issue.column, issue.sheet);
-          newRows[issue.row] = { ...newRows[issue.row], [issue.column]: defaultValue };
-        }
-        
-        newData.rows = newRows;
-        handleDataChange(issue.sheet)(newData);
-      }
+      // Intelligent fix based on the issue type
+      let fixedValue = getIntelligentFix(issue, aiSuggestion);
+      newRows[issue.row] = { ...newRows[issue.row], [issue.column]: fixedValue };
+      
+    } else if (issue.category === 'missing' && issue.row !== undefined && issue.column) {
+      changedCells.push({ row: issue.row, column: issue.column });
+      
+      // Fill missing data with appropriate default
+      const defaultValue = getDefaultValueForColumn(issue.column, issue.sheet);
+      newRows[issue.row] = { ...newRows[issue.row], [issue.column]: defaultValue };
+      
+    } else if (issue.category === 'format' && issue.row !== undefined && issue.column) {
+      changedCells.push({ row: issue.row, column: issue.column });
+      
+      // Fix format issues
+      let fixedValue = fixFormatIssue(issue, newRows[issue.row][issue.column], aiSuggestion);
+      newRows[issue.row] = { ...newRows[issue.row], [issue.column]: fixedValue };
+      
+    } else if (issue.category === 'header') {
+      // For header issues, we can't fix automatically in the grid
+      // But we can show a message to the user
+      alert('Header issues require manual file modification. Please update your file and re-upload.');
+      return;
     }
+    
+    // Apply the changes
+    newData.rows = newRows;
+    handleDataChange(issue.sheet)(newData);
     
     // Set highlighted cells to show visual feedback
     setHighlightedCells(changedCells);
+  };
+
+  const getIntelligentFix = (issue: ValidationIssue, aiSuggestion?: string): string => {
+    // Try to extract fix value from AI suggestion if available
+    if (aiSuggestion) {
+      // Look for specific patterns in AI suggestions
+      const fixMatch = aiSuggestion.match(/💡\s*\*\*Fix\*\*:\s*([^\n]+)/);
+      if (fixMatch) {
+        return fixMatch[1].trim();
+      }
+      
+      // Look for suggested value patterns
+      const valueMatch = aiSuggestion.match(/💡\s*\*\*Suggested Value\*\*:\s*([^\n]+)/);
+      if (valueMatch) {
+        return valueMatch[1].trim();
+      }
+    }
+    
+    // Fallback to issue-specific fixes
+    if (issue.message.includes('PriorityLevel')) {
+      return '3'; // Medium priority
+    } else if (issue.message.includes('Duration')) {
+      return '1'; // Minimum duration
+    } else if (issue.message.includes('MaxConcurrent')) {
+      return '1'; // Safe default
+    } else if (issue.message.includes('MaxLoadPerPhase')) {
+      return '5'; // Reasonable default
+    }
+    
+    return getDefaultValueForColumn(issue.column || '', issue.sheet);
+  };
+
+  const fixFormatIssue = (issue: ValidationIssue, currentValue: unknown, aiSuggestion?: string): string => {
+    const value = String(currentValue || '');
+    
+    // First try to extract fix from AI suggestion
+    if (aiSuggestion) {
+      const fixMatch = aiSuggestion.match(/💡\s*\*\*Fix\*\*:\s*([^\n]+)/);
+      if (fixMatch) {
+        return fixMatch[1].trim();
+      }
+    }
+    
+    if (issue.message.includes('JSON')) {
+      // Try to intelligently convert string to JSON
+      return attemptJSONConversion(value);
+    }
+    
+    if (issue.message.includes('array')) {
+      // Try to convert comma-separated values to array
+      if (value && !value.startsWith('[')) {
+        const parts = value.split(',').map(part => part.trim());
+        const numbers = parts.map(part => parseInt(part)).filter(num => !isNaN(num));
+        return JSON.stringify(numbers.length > 0 ? numbers : [1]);
+      }
+      return value || '[1]';
+    }
+    
+    return value;
+  };
+
+  const attemptJSONConversion = (value: string): string => {
+    if (!value || value.trim() === '') return '{}';
+    
+    // If it's already valid JSON, return as-is
+    try {
+      JSON.parse(value);
+      return value;
+    } catch {
+      // Try common conversion patterns
+      
+      // Pattern 1: key:value, key:value -> {"key":"value", "key":"value"}
+      if (value.includes(':') && !value.startsWith('{')) {
+        try {
+          const pairs = value.split(',').map(pair => {
+            const [key, val] = pair.split(':').map(s => s.trim());
+            return `"${key}":"${val}"`;
+          });
+          return `{${pairs.join(',')}}`;
+        } catch {
+          // Continue to next pattern
+        }
+      }
+      
+      // Pattern 2: key=value, key=value -> {"key":"value", "key":"value"}
+      if (value.includes('=') && !value.startsWith('{')) {
+        try {
+          const pairs = value.split(',').map(pair => {
+            const [key, val] = pair.split('=').map(s => s.trim());
+            return `"${key}":"${val}"`;
+          });
+          return `{${pairs.join(',')}}`;
+        } catch {
+          // Continue to fallback
+        }
+      }
+      
+      // Pattern 3: Simple string -> {"value":"string"}
+      if (!value.includes('{') && !value.includes('[')) {
+        return `{"value":"${value.replace(/"/g, '\\"')}"}`;
+      }
+      
+      // Fallback: empty JSON
+      return '{}';
+    }
   };
 
   const getDefaultValueForColumn = (column: string, sheet: 'clients' | 'workers' | 'tasks'): string => {
@@ -327,6 +446,11 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
     if (column.toLowerCase().includes('duration')) return '1';
     if (column.toLowerCase().includes('maxconcurrent')) return '1';
     if (column.toLowerCase().includes('maxloadperphase')) return '5';
+    if (column.toLowerCase().includes('availableslots')) return '[1,2,3]';
+    if (column.toLowerCase().includes('attributesjson')) return '{}';
+    if (column.toLowerCase().includes('skills')) return 'General';
+    if (column.toLowerCase().includes('category')) return 'Standard';
+    if (column.toLowerCase().includes('group')) return 'Default';
     return 'Auto-filled';
   };
 

@@ -1,6 +1,8 @@
 'use client';
 
 import { useState } from 'react';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faMicrochip } from '@fortawesome/free-solid-svg-icons';
 import { ParsedData } from '@/utils/fileParser';
 
 export interface ValidationIssue {
@@ -22,7 +24,7 @@ interface IssuesSidebarProps {
   };
   activeTab: 'clients' | 'workers' | 'tasks';
   onIssueClick?: (issue: ValidationIssue) => void;
-  onApplyFix?: (issue: ValidationIssue) => void;
+  onApplyFix?: (issue: ValidationIssue, aiSuggestion?: string) => void;
 }
 
 export default function IssuesSidebar({ issues, parsedData, activeTab, onIssueClick, onApplyFix }: IssuesSidebarProps) {
@@ -33,55 +35,80 @@ export default function IssuesSidebar({ issues, parsedData, activeTab, onIssueCl
   const [loadingAI, setLoadingAI] = useState<number | null>(null);
   const [aiSuggestions, setAiSuggestions] = useState<Record<number, string>>({});
 
-  const getAIFixPrompt = (issue: ValidationIssue) => {
-    switch (issue.category) {
-      case 'header':
-        if (issue.message.includes('Missing required header')) {
-          const headerName = issue.message.split(': ')[1];
-          return `The ${issue.sheet} file is missing the required "${headerName}" header. Suggest how to add this column or map an existing column to this requirement.`;
-        } else if (issue.message.includes('Unexpected header')) {
-          const headerName = issue.message.split(': ')[1];
-          return `The ${issue.sheet} file has an unexpected header "${headerName}". Suggest if this should be renamed to match required headers or if it should be removed.`;
-        }
-        break;
-      case 'data':
-        return `Fix data validation issue: ${issue.message} in ${issue.sheet} file at row ${(issue.row || 0) + 1}, column ${issue.column}.`;
-      case 'format':
-        return `Fix format issue: ${issue.message} in ${issue.sheet} file. Provide the correct format and example.`;
-      case 'missing':
-        return `Fix missing data: ${issue.message} in ${issue.sheet} file at row ${(issue.row || 0) + 1}, column ${issue.column}. Suggest appropriate values.`;
-    }
-    return `Fix validation issue: ${issue.message}`;
-  };
-
   const handleAIFix = async (issue: ValidationIssue, index: number) => {
     setLoadingAI(index);
     
     try {
-      // Simulate AI API call - replace with actual AI service
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Get current headers for context
+      const currentData = parsedData[issue.sheet];
+      const currentHeaders = currentData?.headers || [];
       
-      // Mock AI response based on issue type
-      let suggestion = '';
-      if (issue.category === 'header' && issue.message.includes('Missing required header')) {
-        const headerName = issue.message.split(': ')[1];
-        suggestion = `💡 AI Suggestion: Add a new column "${headerName}" to your ${issue.sheet} file. You can add this column in Excel/Google Sheets and populate it with appropriate values. For example:\n\n• ${headerName}: [Provide sample values based on your data context]`;
-      } else if (issue.category === 'header' && issue.message.includes('Unexpected header')) {
-        const headerName = issue.message.split(': ')[1];
-        suggestion = `💡 AI Suggestion: The header "${headerName}" doesn't belong in the ${issue.sheet} file. Consider:\n\n1. Remove this column if it's not needed\n2. Move this data to the correct file type\n3. Check if this should be renamed to match a required header`;
-      } else if (issue.category === 'data') {
-        suggestion = `💡 AI Suggestion: ${issue.message.includes('PriorityLevel') 
-          ? 'Change PriorityLevel to a number between 1-5 (1=Low, 2=Medium-Low, 3=Medium, 4=High, 5=Critical)'
-          : 'Update the value to match the expected data type and format requirements.'
-        }`;
+      // Prepare request payload
+      const requestBody = {
+        issue,
+        currentHeaders,
+        sampleData: issue.row !== undefined && issue.column ? {
+          currentValue: currentData?.rows[issue.row]?.[issue.column] || 'Empty'
+        } : null
+      };
+
+      // Call the AI API
+      const response = await fetch('/api/ai-fix', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody),
+      });
+
+      if (!response.ok) {
+        throw new Error(`API Error: ${response.status}`);
       }
+
+      const data = await response.json();
       
-      setAiSuggestions(prev => ({ ...prev, [index]: suggestion }));
+      // Set the AI suggestion
+      setAiSuggestions(prev => ({ 
+        ...prev, 
+        [index]: data.suggestion 
+      }));
+
     } catch (error) {
-      setAiSuggestions(prev => ({ ...prev, [index]: 'Sorry, AI suggestion failed. Please try again.' }));
+      console.error('AI Fix Error:', error);
+      
+      // Fallback to local suggestion
+      const fallbackSuggestion = getLocalFallbackSuggestion(issue);
+      setAiSuggestions(prev => ({ 
+        ...prev, 
+        [index]: `⚠️ AI service unavailable. Here's a basic suggestion:\n\n${fallbackSuggestion}` 
+      }));
     } finally {
       setLoadingAI(null);
     }
+  };
+
+  // Local fallback when API fails
+  const getLocalFallbackSuggestion = (issue: ValidationIssue): string => {
+    switch (issue.category) {
+      case 'header':
+        if (issue.message.includes('Missing required header')) {
+          const headerName = issue.message.split(': ')[1];
+          return `Add a column named "${headerName}" to your ${issue.sheet} file and populate it with appropriate values.`;
+        } else if (issue.message.includes('Unexpected header')) {
+          const headerName = issue.message.split(': ')[1];
+          return `Remove or rename the "${headerName}" column as it doesn't belong in the ${issue.sheet} file.`;
+        }
+        break;
+      case 'data':
+        return `Fix the data format in ${issue.column}. ${issue.message.includes('PriorityLevel') 
+          ? 'Use a number between 1-5.' 
+          : 'Check the required format for this field.'}`;
+      case 'missing':
+        return `Add a value for ${issue.column} in row ${(issue.row || 0) + 1}.`;
+      case 'format':
+        return `Update ${issue.column} to use the correct format (e.g., valid JSON, proper array syntax).`;
+    }
+    return 'Review the data format requirements and update accordingly.';
   };
   
   const getIssueIcon = (type: ValidationIssue['type']) => {
@@ -209,19 +236,16 @@ export default function IssuesSidebar({ issues, parsedData, activeTab, onIssueCl
                       handleAIFix(issue, index);
                     }}
                     disabled={loadingAI === index}
-                    className="w-full bg-gradient-to-r from-purple-500 to-blue-500 text-white text-xs py-2 px-3 rounded-md hover:from-purple-600 hover:to-blue-600 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+                    className="w-full bg-blue-600 text-white text-xs py-2 px-3 rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {loadingAI === index ? (
-                      <>
+                      <div className="flex items-center justify-center space-x-2">
                         <div className="animate-spin rounded-full h-3 w-3 border border-white border-t-transparent"></div>
-                        <span>AI is thinking...</span>
-                      </>
+                        <span>Loading...</span>
+                      </div>
                     ) : (
                       <>
-                        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                          <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        <span>Ask AI for fix</span>
+                      <FontAwesomeIcon icon={faMicrochip} className="ml-1 scale-150" />  Ask AI 
                       </>
                     )}
                   </button>
@@ -238,7 +262,7 @@ export default function IssuesSidebar({ issues, parsedData, activeTab, onIssueCl
                     <div className="flex space-x-2">
                       <button
                         onClick={() => {
-                          onApplyFix?.(issue);
+                          onApplyFix?.(issue, aiSuggestions[index]);
                           setAiSuggestions(prev => {
                             const newSuggestions = { ...prev };
                             delete newSuggestions[index];

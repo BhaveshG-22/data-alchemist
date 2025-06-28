@@ -3,7 +3,7 @@ import * as XLSX from 'xlsx';
 
 export interface ParsedData {
   headers: string[];
-  rows: Record<string, any>[];
+  rows: Record<string, unknown>[];
 }
 
 export const parseFile = (file: File): Promise<ParsedData> => {
@@ -21,7 +21,7 @@ export const parseFile = (file: File): Promise<ParsedData> => {
           }
           
           const headers = results.meta.fields || [];
-          const rows = results.data as Record<string, any>[];
+          const rows = results.data as Record<string, unknown>[];
           resolve({ headers, rows });
         },
         error: (error) => {
@@ -45,10 +45,11 @@ export const parseFile = (file: File): Promise<ParsedData> => {
           }
           
           const headers = jsonData[0] as string[];
-          const rows = jsonData.slice(1).map((row: any) => {
-            const rowObj: Record<string, any> = {};
+          const rows = jsonData.slice(1).map((row) => {
+            const rowArray = row as unknown[];
+            const rowObj: Record<string, unknown> = {};
             headers.forEach((header, index) => {
-              rowObj[header] = row[index] || '';
+              rowObj[header] = rowArray[index] || '';
             });
             return rowObj;
           });
