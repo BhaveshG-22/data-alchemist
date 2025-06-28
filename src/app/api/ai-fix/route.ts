@@ -30,10 +30,15 @@ Critical Rules:
 4. Each unexpected column should only be used once in renames
 5. NEVER suggest actions for columns that are NOT in the missing or unexpected lists
 6. Analyze data content patterns for matching:
-   - Column with IDs like "C1", "C2", "W1" → should be "ClientID", "WorkerID", "TaskID"
-   - Column with names like "John Doe", "Acme Corp", "Jane Smith" → should be "ClientName", "WorkerName", "TaskName"
+   - Column with IDs like "C1", "C2", "W1", "client_001", "worker-123" → should be "ClientID", "WorkerID", "TaskID"
+   - Column with names like "John Doe", "Acme Corp", "Jane Smith", "Data Analysis Task" → should be "ClientName", "WorkerName", "TaskName"
    - Column with numbers 1-5 → likely "PriorityLevel"
-   - Column with skills/tags → likely "Skills" or "RequiredSkills"
+   - Column with skills/tags like "javascript,python", "react,node" → likely "Skills" or "RequiredSkills"
+   - Column with time values like "8", "16", "24" or arrays "[1,2,3]" → likely "Duration", "AvailableSlots", "PreferredPhases"
+   - Column with groups/categories like "Premium", "Backend", "Phase1" → likely "GroupTag", "Category", "WorkerGroup"
+   - Column with JSON-like text or key:value pairs → likely "AttributesJSON"
+   - Column with levels/ratings like "Senior", "Junior", "Expert" → likely "QualificationLevel"
+   - Column with capacity numbers like "5", "10", "20" → likely "MaxLoadPerPhase", "MaxConcurrent"
 
 Analysis Algorithm (follow exactly):
 1. Create a list of all missing columns to process

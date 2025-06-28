@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import DataTable from 'react-data-table-component';
 import { ParsedData } from '@/utils/fileParser';
 
@@ -126,6 +126,8 @@ export default function EditableDataTable({ data, onDataChange, title, highlight
   const handleSort = (column: string) => {
     if (editingHeader) return; // Don't sort while editing
     
+    console.log('Sorting by column:', column);
+    
     let direction: 'asc' | 'desc' = 'asc';
     if (sortConfig && sortConfig.column === column && sortConfig.direction === 'asc') {
       direction = 'desc';
@@ -136,22 +138,33 @@ export default function EditableDataTable({ data, onDataChange, title, highlight
     const sortedData = [...tableData].sort((a, b) => {
       const aVal = String(a[column] || '');
       const bVal = String(b[column] || '');
-      
-      // Try to parse as numbers first
-      const aNum = parseFloat(aVal);
-      const bNum = parseFloat(bVal);
-      
-      if (!isNaN(aNum) && !isNaN(bNum)) {
-        return direction === 'asc' ? aNum - bNum : bNum - aNum;
+    
+      // Match pattern like "C1", "W10", "T03"
+      const matchA = aVal.match(/^([A-Za-z]+)(\d+)$/);
+      const matchB = bVal.match(/^([A-Za-z]+)(\d+)$/);
+    
+      if (matchA && matchB && matchA[1] === matchB[1]) {
+        const numA = parseInt(matchA[2], 10);
+        const numB = parseInt(matchB[2], 10);
+        return direction === 'asc' ? numA - numB : numB - numA;
       }
-      
-      // Fall back to string comparison
-      return direction === 'asc' 
-        ? aVal.localeCompare(bVal) 
+    
+      // Fallback: normal string compare
+      return direction === 'asc'
+        ? aVal.localeCompare(bVal)
         : bVal.localeCompare(aVal);
     });
     
+    
+    console.log('Sorted data length:', sortedData.length, 'Direction:', direction);
     setTableData(sortedData);
+    
+    // Also update the parent component with sorted data
+    const updatedData: ParsedData = {
+      headers: data.headers,
+      rows: sortedData
+    };
+    onDataChange(updatedData);
   };
 
   const renderEditableHeader = (header: string) => {
@@ -211,7 +224,7 @@ export default function EditableDataTable({ data, onDataChange, title, highlight
     );
   };
 
-  const renderEditableCell = (row: Record<string, unknown>, rowIndex: number, column: string) => {
+  const renderEditableCell = useCallback((row: Record<string, unknown>, rowIndex: number, column: string) => {
     const isEditing = editingCell?.rowIndex === rowIndex && editingCell?.column === column;
     const value = String(row[column] || '');
     const cellKey = `${rowIndex}-${column}`;
@@ -251,7 +264,7 @@ export default function EditableDataTable({ data, onDataChange, title, highlight
         {value || <span className="text-gray-400">Click to edit</span>}
       </div>
     );
-  };
+  }, [editingCell, flashingCells, hoveredCell, handleCellClick, handleCellEdit, handleCellBlur]);
 
   const columns: EditableColumn[] = useMemo(() => {
     console.log('Creating columns with headers:', data.headers);
