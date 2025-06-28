@@ -4,16 +4,7 @@ import { useState } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faMicrochip } from '@fortawesome/free-solid-svg-icons';
 import { ParsedData } from '@/utils/fileParser';
-
-export interface ValidationIssue {
-  type: 'error' | 'warning' | 'info';
-  category: 'header' | 'data' | 'format' | 'missing';
-  message: string;
-  sheet: 'clients' | 'workers' | 'tasks';
-  row?: number;
-  column?: string;
-  severity: 'high' | 'medium' | 'low';
-}
+import { ValidationIssue } from '@/validation';
 
 interface IssuesSidebarProps {
   issues: ValidationIssue[];
@@ -25,9 +16,11 @@ interface IssuesSidebarProps {
   activeTab: 'clients' | 'workers' | 'tasks';
   onIssueClick?: (issue: ValidationIssue) => void;
   onApplyFix?: (issue: ValidationIssue, aiSuggestion?: string) => void;
+  onIssueHover?: (issue: ValidationIssue) => void;
+  onIssueUnhover?: () => void;
 }
 
-export default function IssuesSidebar({ issues, parsedData, activeTab, onIssueClick, onApplyFix }: IssuesSidebarProps) {
+export default function IssuesSidebar({ issues, parsedData, activeTab, onIssueClick, onApplyFix, onIssueHover, onIssueUnhover }: IssuesSidebarProps) {
   const filteredIssues = issues.filter(issue => issue.sheet === activeTab);
   const errorCount = filteredIssues.filter(issue => issue.type === 'error').length;
   const warningCount = filteredIssues.filter(issue => issue.type === 'warning').length;
@@ -195,6 +188,8 @@ export default function IssuesSidebar({ issues, parsedData, activeTab, onIssueCl
               <div
                 key={index}
                 className="border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors overflow-hidden"
+                onMouseEnter={() => onIssueHover?.(issue)}
+                onMouseLeave={() => onIssueUnhover?.()}
               >
                 <div 
                   onClick={() => onIssueClick?.(issue)}
@@ -245,7 +240,7 @@ export default function IssuesSidebar({ issues, parsedData, activeTab, onIssueCl
                       </div>
                     ) : (
                       <>
-                      <FontAwesomeIcon icon={faMicrochip} className="ml-1 scale-150" />  Ask AI 
+                      <FontAwesomeIcon icon={faMicrochip} className="ml-1 scale-125 mr-2" />  Ask AI 
                       </>
                     )}
                   </button>

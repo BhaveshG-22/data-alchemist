@@ -18,10 +18,12 @@ interface TabbedDataViewProps {
   onDataChange: (type: 'clients' | 'workers' | 'tasks') => (newData: ParsedData) => void;
   onTabChange?: (tab: 'clients' | 'workers' | 'tasks') => void;
   highlightedCells?: Array<{ row: number; column: string }>;
+  highlightedHeaders?: Array<{ sheet: string; header: string }>;
+  hoveredCell?: { row: number; column: string } | null;
   onHighlightComplete?: () => void;
 }
 
-export default function TabbedDataView({ parsedData, errors, onDataChange, onTabChange, highlightedCells, onHighlightComplete }: TabbedDataViewProps) {
+export default function TabbedDataView({ parsedData, errors, onDataChange, onTabChange, highlightedCells, highlightedHeaders, hoveredCell, onHighlightComplete }: TabbedDataViewProps) {
   const [activeTab, setActiveTab] = useState<'clients' | 'workers' | 'tasks'>('clients');
 
   const handleTabChange = (tab: 'clients' | 'workers' | 'tasks') => {
@@ -102,10 +104,13 @@ export default function TabbedDataView({ parsedData, errors, onDataChange, onTab
         ) : activeTabData?.data ? (
           <div className="p-0">
             <EditableDataTable
+              key={`${activeTab}-${activeTabData.data.headers.join(',')}`}
               data={activeTabData.data}
               onDataChange={onDataChange(activeTab)}
               title=""
               highlightedCells={highlightedCells}
+              highlightedHeaders={highlightedHeaders?.filter(h => h.sheet === activeTab)}
+              hoveredCell={hoveredCell}
               onHighlightComplete={onHighlightComplete}
             />
           </div>

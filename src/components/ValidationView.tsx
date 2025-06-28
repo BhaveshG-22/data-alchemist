@@ -2,8 +2,13 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import TabbedDataView from './TabbedDataView';
-import IssuesSidebar, { ValidationIssue } from './IssuesSidebar';
+import IssuesSidebar from './IssuesSidebar';
 import { parseFile, ParsedData } from '@/utils/fileParser';
+import { 
+  ValidationContextBuilder, 
+  createValidationEngine,
+  ValidationIssue
+} from '@/validation';
 
 interface ValidationViewProps {
   uploadedFiles: {
@@ -40,166 +45,43 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
   const [activeTab, setActiveTab] = useState<'clients' | 'workers' | 'tasks'>('clients');
   const [validationIssues, setValidationIssues] = useState<ValidationIssue[]>([]);
   const [highlightedCells, setHighlightedCells] = useState<Array<{ row: number; column: string }>>([]);
+  const [highlightedHeaders, setHighlightedHeaders] = useState<Array<{ sheet: string; header: string }>>([]);
+  const [hoveredIssue, setHoveredIssue] = useState<{ row: number; column: string } | null>(null);
+  const [hoverTimeout, setHoverTimeout] = useState<NodeJS.Timeout | null>(null);
 
-  // Required headers for each sheet type
-  const requiredHeaders = useMemo(() => ({
-    clients: ['ClientID', 'ClientName', 'PriorityLevel', 'RequestedTaskIDs', 'GroupTag', 'AttributesJSON'],
-    workers: ['WorkerID', 'WorkerName', 'Skills', 'AvailableSlots', 'MaxLoadPerPhase', 'WorkerGroup', 'QualificationLevel'],
-    tasks: ['TaskID', 'TaskName', 'Category', 'Duration', 'RequiredSkills', 'PreferredPhases', 'MaxConcurrent']
-  }), []);
+  // Initialize validation engine
+  const validationEngine = useMemo(() => createValidationEngine(), []);
 
-  const validateData = useCallback((data: ParsedData, type: 'clients' | 'workers' | 'tasks'): ValidationIssue[] => {
-    const issues: ValidationIssue[] = [];
-    const required = requiredHeaders[type];
+  // New modular validation using ValidationEngine
+  const validateData = useCallback(async (parsedData: { clients: ParsedData | null; workers: ParsedData | null; tasks: ParsedData | null }): Promise<ValidationIssue[]> => {
+    console.log('🔍 Starting modular validation...');
     
-    // Check for missing required headers
-    const missingHeaders = required.filter(header => !data.headers.includes(header));
-    missingHeaders.forEach(header => {
-      issues.push({
-        type: 'error',
-        category: 'header',
-        message: `Missing required header: ${header}`,
-        sheet: type,
-        severity: 'high'
-      });
-    });
+    // Build validation context
+    const context = ValidationContextBuilder
+      .create()
+      .withClients(parsedData.clients)
+      .withWorkers(parsedData.workers)
+      .withTasks(parsedData.tasks)
+      .withConfig({ 
+        enabledValidators: [
+          'RequiredColumnsValidator',
+          'HeaderMappingValidator',
+          'DuplicateIDValidator',
+          'JSONValidator'
+        ],
+        strictMode: false,
+        autoFix: false,
+        skipDependentValidators: false
+      })
+      .build();
 
-    // Check for extra headers
-    const extraHeaders = data.headers.filter(header => !required.includes(header));
-    extraHeaders.forEach(header => {
-      issues.push({
-        type: 'warning',
-        category: 'header',
-        message: `Unexpected header: ${header}`,
-        sheet: type,
-        severity: 'low'
-      });
-    });
-
-    // Validate data types and formats
-    data.rows.forEach((row, rowIndex) => {
-      if (type === 'clients') {
-        // Validate PriorityLevel (integer 1-5)
-        const priority = row['PriorityLevel'];
-        if (priority && (isNaN(Number(priority)) || Number(priority) < 1 || Number(priority) > 5)) {
-          issues.push({
-            type: 'error',
-            category: 'data',
-            message: `PriorityLevel must be integer 1-5, got: ${priority}`,
-            sheet: type,
-            row: rowIndex,
-            column: 'PriorityLevel',
-            severity: 'high'
-          });
-        }
-
-        // Validate AttributesJSON
-        const attributesJSON = row['AttributesJSON'];
-        if (attributesJSON && String(attributesJSON).trim() !== '') {
-          try {
-            JSON.parse(String(attributesJSON));
-          } catch {
-            issues.push({
-              type: 'error',
-              category: 'format',
-              message: `Invalid JSON format in AttributesJSON`,
-              sheet: type,
-              row: rowIndex,
-              column: 'AttributesJSON',
-              severity: 'high'
-            });
-          }
-        }
-      }
-
-      if (type === 'workers') {
-        // Validate MaxLoadPerPhase (integer)
-        const maxLoad = row['MaxLoadPerPhase'];
-        if (maxLoad && isNaN(Number(maxLoad))) {
-          issues.push({
-            type: 'error',
-            category: 'data',
-            message: `MaxLoadPerPhase must be integer, got: ${maxLoad}`,
-            sheet: type,
-            row: rowIndex,
-            column: 'MaxLoadPerPhase',
-            severity: 'high'
-          });
-        }
-
-        // Validate AvailableSlots (array format)
-        const availableSlots = row['AvailableSlots'];
-        if (availableSlots && String(availableSlots).trim() !== '') {
-          try {
-            const parsed = JSON.parse(String(availableSlots));
-            if (!Array.isArray(parsed) || !parsed.every(slot => Number.isInteger(slot))) {
-              throw new Error('Invalid format');
-            }
-          } catch {
-            issues.push({
-              type: 'error',
-              category: 'format',
-              message: `AvailableSlots must be array of integers (e.g. [1,3,5])`,
-              sheet: type,
-              row: rowIndex,
-              column: 'AvailableSlots',
-              severity: 'high'
-            });
-          }
-        }
-      }
-
-      if (type === 'tasks') {
-        // Validate Duration (number ≥1)
-        const duration = row['Duration'];
-        if (duration && (isNaN(Number(duration)) || Number(duration) < 1)) {
-          issues.push({
-            type: 'error',
-            category: 'data',
-            message: `Duration must be number ≥1, got: ${duration}`,
-            sheet: type,
-            row: rowIndex,
-            column: 'Duration',
-            severity: 'high'
-          });
-        }
-
-        // Validate MaxConcurrent (integer)
-        const maxConcurrent = row['MaxConcurrent'];
-        if (maxConcurrent && isNaN(Number(maxConcurrent))) {
-          issues.push({
-            type: 'error',
-            category: 'data',
-            message: `MaxConcurrent must be integer, got: ${maxConcurrent}`,
-            sheet: type,
-            row: rowIndex,
-            column: 'MaxConcurrent',
-            severity: 'high'
-          });
-        }
-      }
-
-      // Check for empty required fields
-      required.forEach(header => {
-        if (data.headers.includes(header)) {
-          const value = row[header];
-          if (!value || value.toString().trim() === '') {
-            issues.push({
-              type: 'error',
-              category: 'missing',
-              message: `Empty required field`,
-              sheet: type,
-              row: rowIndex,
-              column: header,
-              severity: 'high'
-            });
-          }
-        }
-      });
-    });
-
+    // Run validation
+    const issues = await validationEngine.runValidation(context);
+    console.log(`✅ Validation complete: ${issues.length} issues found`);
+    
     return issues;
-  }, [requiredHeaders]);
+  }, [validationEngine]);
+
 
   const parseFiles = useCallback(async () => {
       setLoading(true);
@@ -242,17 +124,8 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
         }
       }
 
-      // Validate data and collect issues
-      const allIssues: ValidationIssue[] = [];
-      if (newParsedData.clients) {
-        allIssues.push(...validateData(newParsedData.clients, 'clients'));
-      }
-      if (newParsedData.workers) {
-        allIssues.push(...validateData(newParsedData.workers, 'workers'));
-      }
-      if (newParsedData.tasks) {
-        allIssues.push(...validateData(newParsedData.tasks, 'tasks'));
-      }
+      // Validate data using the new modular system
+      const allIssues = await validateData(newParsedData);
 
       setParsedData(newParsedData);
       setErrors(newErrors);
@@ -264,20 +137,26 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
     parseFiles();
   }, [uploadedFiles, parseFiles]);
 
-  const handleDataChange = (type: 'clients' | 'workers' | 'tasks') => (newData: ParsedData) => {
-    setParsedData(prev => ({
-      ...prev,
-      [type]: newData
-    }));
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (hoverTimeout) {
+        clearTimeout(hoverTimeout);
+      }
+    };
+  }, [hoverTimeout]);
 
-    // Re-validate data when it changes
-    const newIssues = validateData(newData, type);
-    setValidationIssues(prevIssues => {
-      // Remove old issues for this sheet type
-      const filteredIssues = prevIssues.filter(issue => issue.sheet !== type);
-      // Add new issues for this sheet type
-      return [...filteredIssues, ...newIssues];
-    });
+  const handleDataChange = (type: 'clients' | 'workers' | 'tasks') => async (newData: ParsedData) => {
+    const updatedParsedData = {
+      ...parsedData,
+      [type]: newData
+    };
+    
+    setParsedData(updatedParsedData);
+
+    // Re-validate all data when it changes using the new system
+    const newIssues = await validateData(updatedParsedData);
+    setValidationIssues(newIssues);
   };
 
   const handleIssueClick = (issue: ValidationIssue) => {
@@ -285,175 +164,89 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
     console.log('Issue clicked:', issue);
   };
 
-  const handleApplyAIFix = (issue: ValidationIssue, aiSuggestion?: string) => {
+  const handleIssueHover = (issue: ValidationIssue) => {
+    // Clear any existing timeout
+    if (hoverTimeout) {
+      clearTimeout(hoverTimeout);
+      setHoverTimeout(null);
+    }
+
+    // Only highlight if the issue has a specific row and column
+    if (issue.row !== undefined && issue.column) {
+      setHoveredIssue({ row: issue.row, column: issue.column });
+      
+      // Set timeout to auto-remove hover after 4 seconds
+      const timeoutId = setTimeout(() => {
+        setHoveredIssue(null);
+        setHoverTimeout(null);
+      }, 4000);
+      
+      setHoverTimeout(timeoutId);
+    }
+  };
+
+  const handleIssueUnhover = () => {
+    // Clear any existing timeout
+    if (hoverTimeout) {
+      clearTimeout(hoverTimeout);
+      setHoverTimeout(null);
+    }
+    
+    setHoveredIssue(null);
+  };
+
+  const handleApplyAIFix = async (issue: ValidationIssue, aiSuggestion?: string) => {
     console.log('Applying AI fix for:', issue);
+    console.log('AI suggestion received:', aiSuggestion);
     
-    const changedCells: Array<{ row: number; column: string }> = [];
-    const currentData = parsedData[issue.sheet];
-    
-    if (!currentData) return;
-    
-    const newData = { ...currentData };
-    const newRows = [...newData.rows];
-    
-    // Apply fixes based on issue category
-    if (issue.category === 'data' && issue.row !== undefined && issue.column) {
-      changedCells.push({ row: issue.row, column: issue.column });
-      
-      // Intelligent fix based on the issue type
-      let fixedValue = getIntelligentFix(issue, aiSuggestion);
-      newRows[issue.row] = { ...newRows[issue.row], [issue.column]: fixedValue };
-      
-    } else if (issue.category === 'missing' && issue.row !== undefined && issue.column) {
-      changedCells.push({ row: issue.row, column: issue.column });
-      
-      // Fill missing data with appropriate default
-      const defaultValue = getDefaultValueForColumn(issue.column, issue.sheet);
-      newRows[issue.row] = { ...newRows[issue.row], [issue.column]: defaultValue };
-      
-    } else if (issue.category === 'format' && issue.row !== undefined && issue.column) {
-      changedCells.push({ row: issue.row, column: issue.column });
-      
-      // Fix format issues
-      let fixedValue = fixFormatIssue(issue, newRows[issue.row][issue.column], aiSuggestion);
-      newRows[issue.row] = { ...newRows[issue.row], [issue.column]: fixedValue };
-      
-    } else if (issue.category === 'header') {
-      // For header issues, we can't fix automatically in the grid
-      // But we can show a message to the user
-      alert('Header issues require manual file modification. Please update your file and re-upload.');
-      return;
-    }
-    
-    // Apply the changes
-    newData.rows = newRows;
-    handleDataChange(issue.sheet)(newData);
-    
-    // Set highlighted cells to show visual feedback
-    setHighlightedCells(changedCells);
-  };
-
-  const getIntelligentFix = (issue: ValidationIssue, aiSuggestion?: string): string => {
-    // Try to extract fix value from AI suggestion if available
+    // Add the AI suggestion to the issue
     if (aiSuggestion) {
-      // Look for specific patterns in AI suggestions
-      const fixMatch = aiSuggestion.match(/💡\s*\*\*Fix\*\*:\s*([^\n]+)/);
-      if (fixMatch) {
-        return fixMatch[1].trim();
-      }
-      
-      // Look for suggested value patterns
-      const valueMatch = aiSuggestion.match(/💡\s*\*\*Suggested Value\*\*:\s*([^\n]+)/);
-      if (valueMatch) {
-        return valueMatch[1].trim();
-      }
+      issue.suggestedFix = aiSuggestion;
     }
     
-    // Fallback to issue-specific fixes
-    if (issue.message.includes('PriorityLevel')) {
-      return '3'; // Medium priority
-    } else if (issue.message.includes('Duration')) {
-      return '1'; // Minimum duration
-    } else if (issue.message.includes('MaxConcurrent')) {
-      return '1'; // Safe default
-    } else if (issue.message.includes('MaxLoadPerPhase')) {
-      return '5'; // Reasonable default
-    }
-    
-    return getDefaultValueForColumn(issue.column || '', issue.sheet);
-  };
+    // Build current validation context
+    const context = ValidationContextBuilder
+      .create()
+      .withClients(parsedData.clients)
+      .withWorkers(parsedData.workers)
+      .withTasks(parsedData.tasks)
+      .build();
 
-  const fixFormatIssue = (issue: ValidationIssue, currentValue: unknown, aiSuggestion?: string): string => {
-    const value = String(currentValue || '');
+    // Apply fix using the validation engine
+    const fixResult = await validationEngine.applyFix(issue, context);
     
-    // First try to extract fix from AI suggestion
-    if (aiSuggestion) {
-      const fixMatch = aiSuggestion.match(/💡\s*\*\*Fix\*\*:\s*([^\n]+)/);
-      if (fixMatch) {
-        return fixMatch[1].trim();
-      }
-    }
-    
-    if (issue.message.includes('JSON')) {
-      // Try to intelligently convert string to JSON
-      return attemptJSONConversion(value);
-    }
-    
-    if (issue.message.includes('array')) {
-      // Try to convert comma-separated values to array
-      if (value && !value.startsWith('[')) {
-        const parts = value.split(',').map(part => part.trim());
-        const numbers = parts.map(part => parseInt(part)).filter(num => !isNaN(num));
-        return JSON.stringify(numbers.length > 0 ? numbers : [1]);
-      }
-      return value || '[1]';
-    }
-    
-    return value;
-  };
-
-  const attemptJSONConversion = (value: string): string => {
-    if (!value || value.trim() === '') return '{}';
-    
-    // If it's already valid JSON, return as-is
-    try {
-      JSON.parse(value);
-      return value;
-    } catch {
-      // Try common conversion patterns
+    if (fixResult.success) {
+      console.log('✅ Fix applied successfully:', fixResult.message);
       
-      // Pattern 1: key:value, key:value -> {"key":"value", "key":"value"}
-      if (value.includes(':') && !value.startsWith('{')) {
-        try {
-          const pairs = value.split(',').map(pair => {
-            const [key, val] = pair.split(':').map(s => s.trim());
-            return `"${key}":"${val}"`;
-          });
-          return `{${pairs.join(',')}}`;
-        } catch {
-          // Continue to next pattern
+      // Update the data with the fixed version
+      if (fixResult.modifiedData) {
+        const updatedParsedData = {
+          ...parsedData,
+          [issue.sheet]: fixResult.modifiedData
+        };
+        
+        setParsedData(updatedParsedData);
+        
+        // Set visual feedback
+        if (issue.category === 'header' && issue.column) {
+          setHighlightedHeaders([{ sheet: issue.sheet, header: issue.column }]);
+          setTimeout(() => setHighlightedHeaders([]), 2000);
+        } else if (issue.row !== undefined && issue.column) {
+          setHighlightedCells([{ row: issue.row, column: issue.column }]);
+          setTimeout(() => setHighlightedCells([]), 2000);
         }
+        
+        // Re-validate to update issues list
+        const newIssues = await validateData(updatedParsedData);
+        setValidationIssues(newIssues);
       }
-      
-      // Pattern 2: key=value, key=value -> {"key":"value", "key":"value"}
-      if (value.includes('=') && !value.startsWith('{')) {
-        try {
-          const pairs = value.split(',').map(pair => {
-            const [key, val] = pair.split('=').map(s => s.trim());
-            return `"${key}":"${val}"`;
-          });
-          return `{${pairs.join(',')}}`;
-        } catch {
-          // Continue to fallback
-        }
-      }
-      
-      // Pattern 3: Simple string -> {"value":"string"}
-      if (!value.includes('{') && !value.includes('[')) {
-        return `{"value":"${value.replace(/"/g, '\\"')}"}`;
-      }
-      
-      // Fallback: empty JSON
-      return '{}';
+    } else {
+      console.error('❌ Fix failed:', fixResult.message);
+      // Could show user notification here
     }
   };
 
-  const getDefaultValueForColumn = (column: string, sheet: 'clients' | 'workers' | 'tasks'): string => {
-    // Provide smart defaults based on column name and sheet type
-    if (column.toLowerCase().includes('id')) return `${sheet.slice(0, -1)}_${Date.now()}`;
-    if (column.toLowerCase().includes('name')) return 'Auto-generated Name';
-    if (column.toLowerCase().includes('priority')) return '3';
-    if (column.toLowerCase().includes('duration')) return '1';
-    if (column.toLowerCase().includes('maxconcurrent')) return '1';
-    if (column.toLowerCase().includes('maxloadperphase')) return '5';
-    if (column.toLowerCase().includes('availableslots')) return '[1,2,3]';
-    if (column.toLowerCase().includes('attributesjson')) return '{}';
-    if (column.toLowerCase().includes('skills')) return 'General';
-    if (column.toLowerCase().includes('category')) return 'Standard';
-    if (column.toLowerCase().includes('group')) return 'Default';
-    return 'Auto-filled';
-  };
-
+  // Clean up helper function that's still needed
   const handleHighlightComplete = () => {
     setHighlightedCells([]);
   };
@@ -514,6 +307,8 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
             onDataChange={handleDataChange}
             onTabChange={setActiveTab}
             highlightedCells={highlightedCells}
+            highlightedHeaders={highlightedHeaders}
+            hoveredCell={hoveredIssue}
             onHighlightComplete={handleHighlightComplete}
           />
         </div>
@@ -525,6 +320,8 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
           activeTab={activeTab}
           onIssueClick={handleIssueClick}
           onApplyFix={handleApplyAIFix}
+          onIssueHover={handleIssueHover}
+          onIssueUnhover={handleIssueUnhover}
         />
       </div>
     </div>

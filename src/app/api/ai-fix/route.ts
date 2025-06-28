@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ChatOpenAI } from '@langchain/openai';
-import { PromptTemplate } from '@langchain/core/prompts';
-import { StringOutputParser } from '@langchain/core/output_parsers';
 
 // Initialize the LLM
 const llm = new ChatOpenAI({
@@ -20,15 +18,14 @@ Issue Context:
 - Current Headers: {currentHeaders}
 - Required Headers: {requiredHeaders}
 
-Task: Provide a clear, actionable solution to fix this header issue. Be specific about what the user should do.
+Task: Provide a specific header fix that can be applied automatically. Focus on exact header names to rename or add.
 
 Response format:
-💡 **Solution**: [Specific action to take]
-📋 **Steps**: 
-1. [First step]
-2. [Second step] 
-3. [Final step]
-⚠️ **Important**: [Any warnings or considerations]
+💡 **Fix**: [Exact header name to use, e.g. "ClientID", "WorkerName"]
+📋 **Action**: [Specific action like "Rename customer_id to ClientID" or "Add missing ClientName column"]
+⚠️ **Note**: [Brief explanation]
+
+IMPORTANT: The Fix section should contain only the exact header name that should be used.
 
 Solution:`,
 
@@ -95,6 +92,36 @@ Response format:
 
 Important: The Suggested Value should be the EXACT text to put in the cell.
 
+Solution:`,
+
+  smart_header_match: `You are a data validation expert helping users fix header mapping issues by analyzing sample data.
+
+Issue Context:
+- File Type: {fileType}
+- Missing Required Header: {missingHeader}
+- Unexpected Headers: {unexpectedHeaders}
+- Sample Data from Unexpected Headers: {sampleData}
+
+Task: Determine if any unexpected header should be renamed to the missing required header based on the sample data content.
+
+Analysis Guidelines:
+1. Look at the sample data values in each unexpected header
+2. Consider if the data type and content match what the missing header should contain
+3. Check for obvious spelling mistakes or variations
+4. Consider common naming patterns (e.g., worker_name vs WorkerName, clientID vs ClientID)
+
+Response format:
+💡 **Fix**: [Either the unexpected header name that should be renamed, or "AddNewColumn" if none match]
+📊 **Reasoning**: [Explain why this header matches or why a new column is needed]
+🔍 **Data Analysis**: [Brief analysis of the sample data that led to this decision]
+
+Examples:
+- If "WorkerNamee" contains names like "John", "Mary" → rename to "WorkerName"
+- If "client_id" contains IDs like "C001", "C002" → rename to "ClientID"  
+- If no unexpected header has matching data → suggest "AddNewColumn"
+
+Important: Only suggest renaming if you're confident the data content matches the expected field type.
+
 Solution:`
 };
 
@@ -150,7 +177,7 @@ export async function POST(request: NextRequest) {
     const promptTemplate = PROMPT_TEMPLATES[templateKey] || PROMPT_TEMPLATES.data;
 
     // Helper function to sanitize values for LangChain
-    const sanitizeValue = (value: any): string => {
+    const sanitizeValue = (value: unknown): string => {
       if (value === null || value === undefined) return 'Not provided';
       if (typeof value === 'string') {
         // Remove any special characters that might cause issues
