@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faMicrochip } from '@fortawesome/free-solid-svg-icons';
 import { ParsedData } from '@/utils/fileParser';
-import { ValidationIssue } from '@/validation';
+import { ValidationIssue } from '@/validators';
 
 interface IssuesSidebarProps {
   issues: ValidationIssue[];
@@ -33,16 +33,52 @@ export default function IssuesSidebar({ issues, parsedData, activeTab, onIssueCl
     
     try {
       // Get current headers for context
-      const currentData = parsedData[issue.sheet];
+      const sheetName = issue.sheet as 'clients' | 'workers' | 'tasks' | undefined;
+      const currentData = sheetName ? parsedData[sheetName] : null;
       const currentHeaders = currentData?.headers || [];
+      
+      // For missing columns, gather comprehensive context
+      let additionalContext = {};
+      if (issue.category === 'missing_columns' && currentData) {
+        // Get required columns for this sheet
+        const requiredColumns = {
+          clients: ['ClientID', 'ClientName', 'PriorityLevel', 'RequestedTaskIDs', 'GroupTag', 'AttributesJSON'],
+          workers: ['WorkerID', 'WorkerName', 'Skills', 'AvailableSlots', 'MaxLoadPerPhase', 'WorkerGroup', 'QualificationLevel'],
+          tasks: ['TaskID', 'TaskName', 'Category', 'Duration', 'RequiredSkills', 'PreferredPhases', 'MaxConcurrent'],
+        };
+        
+        const required = requiredColumns[sheetName as keyof typeof requiredColumns] || [];
+        
+        // Get missing/unexpected columns from the issue data
+        const missingColumns = (issue as any).missingColumns || [];
+        const unexpectedColumns = (issue as any).unexpectedColumns || [];
+        
+        // Get sample data from ALL columns (first 5 rows for comprehensive analysis)
+        const sampleData: Record<string, any[]> = {};
+        currentHeaders.forEach(column => {
+          sampleData[column] = currentData.rows
+            .slice(0, 5)
+            .map(row => row[column])
+            .filter(val => val !== undefined && val !== null && val !== '');
+        });
+        
+        additionalContext = {
+          missingColumns,
+          unexpectedColumns,
+          sampleData,
+          requiredHeaders: required,
+          sheet: issue.sheet
+        };
+      }
       
       // Prepare request payload
       const requestBody = {
         issue,
         currentHeaders,
+        ...additionalContext,
         sampleData: issue.row !== undefined && issue.column ? {
-          currentValue: currentData?.rows[issue.row]?.[issue.column] || 'Empty'
-        } : null
+          currentValue: currentData?.rows?.[issue.row - 1]?.[issue.column] || 'Empty'
+        } : ('sampleData' in additionalContext ? additionalContext.sampleData : null)
       };
 
       // Call the AI API
@@ -83,23 +119,29 @@ export default function IssuesSidebar({ issues, parsedData, activeTab, onIssueCl
   // Local fallback when API fails
   const getLocalFallbackSuggestion = (issue: ValidationIssue): string => {
     switch (issue.category) {
-      case 'header':
-        if (issue.message.includes('Missing required header')) {
-          const headerName = issue.message.split(': ')[1];
-          return `Add a column named "${headerName}" to your ${issue.sheet} file and populate it with appropriate values.`;
-        } else if (issue.message.includes('Unexpected header')) {
-          const headerName = issue.message.split(': ')[1];
-          return `Remove or rename the "${headerName}" column as it doesn't belong in the ${issue.sheet} file.`;
+      case 'missing_columns':
+        if (issue.message.includes('Missing required column')) {
+          return `Add the missing column "${issue.column}" to your ${issue.sheet} sheet.`;
+        } else if (issue.message.includes('Unexpected column')) {
+          return `Remove or rename the unexpected column "${issue.column}".`;
         }
         break;
-      case 'data':
-        return `Fix the data format in ${issue.column}. ${issue.message.includes('PriorityLevel') 
-          ? 'Use a number between 1-5.' 
-          : 'Check the required format for this field.'}`;
-      case 'missing':
-        return `Add a value for ${issue.column} in row ${(issue.row || 0) + 1}.`;
-      case 'format':
-        return `Update ${issue.column} to use the correct format (e.g., valid JSON, proper array syntax).`;
+      case 'duplicate_ids':
+        return `Change the duplicate ID "${issue.value}" to a unique identifier.`;
+      case 'malformed_lists':
+        return `Fix the list format in ${issue.column}. Use comma-separated values.`;
+      case 'out_of_range':
+        return `Update ${issue.column} to use a valid range value.`;
+      case 'json_fields':
+        return `Fix the JSON format in ${issue.column}. Ensure proper JSON syntax with quotes around keys.`;
+      case 'references':
+        return `Ensure the referenced ID exists in the target sheet.`;
+      case 'overloaded_workers':
+        return `Reduce the workload or increase available capacity for this worker.`;
+      case 'skill_coverage':
+        return `Add workers with the required skills or remove tasks requiring unavailable skills.`;
+      case 'concurrency_feasibility':
+        return `Review the concurrency settings for this task.`;
     }
     return 'Review the data format requirements and update accordingly.';
   };
@@ -129,14 +171,32 @@ export default function IssuesSidebar({ issues, parsedData, activeTab, onIssueCl
 
   const getCategoryIcon = (category: ValidationIssue['category']) => {
     switch (category) {
-      case 'header':
+      case 'missing_columns':
         return '📋';
-      case 'data':
+      case 'duplicate_ids':
+        return '🔄';
+      case 'malformed_lists':
+        return '📝';
+      case 'out_of_range':
         return '📊';
-      case 'format':
+      case 'json_fields':
         return '🔧';
-      case 'missing':
-        return '❌';
+      case 'references':
+        return '🔗';
+      case 'circular_corun':
+        return '♻️';
+      case 'conflicting_rules':
+        return '⚠️';
+      case 'overloaded_workers':
+        return '👥';
+      case 'phase_saturation':
+        return '📈';
+      case 'skill_coverage':
+        return '🎯';
+      case 'concurrency_feasibility':
+        return '⚡';
+      default:
+        return '❓';
     }
   };
 
@@ -205,9 +265,9 @@ export default function IssuesSidebar({ issues, parsedData, activeTab, onIssueCl
                         <span className="text-xs font-medium text-gray-600 capitalize">
                           {issue.category}
                         </span>
-                        {issue.severity === 'high' && (
+                        {issue.type === 'error' && (
                           <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                            High
+                            Error
                           </span>
                         )}
                       </div>

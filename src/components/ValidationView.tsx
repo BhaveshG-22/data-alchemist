@@ -1,14 +1,15 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import TabbedDataView from './TabbedDataView';
 import IssuesSidebar from './IssuesSidebar';
 import { parseFile, ParsedData } from '@/utils/fileParser';
 import { 
-  ValidationContextBuilder, 
-  createValidationEngine,
-  ValidationIssue
-} from '@/validation';
+  runAllValidations,
+  ValidationIssue,
+  ValidatorContext,
+  ParsedData as ValidatedParsedData
+} from '@/validators';
 
 interface ValidationViewProps {
   uploadedFiles: {
@@ -45,42 +46,57 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
   const [activeTab, setActiveTab] = useState<'clients' | 'workers' | 'tasks'>('clients');
   const [validationIssues, setValidationIssues] = useState<ValidationIssue[]>([]);
   const [highlightedCells, setHighlightedCells] = useState<Array<{ row: number; column: string }>>([]);
-  const [highlightedHeaders, setHighlightedHeaders] = useState<Array<{ sheet: string; header: string }>>([]);
+  const [highlightedHeaders] = useState<Array<{ sheet: string; header: string }>>([]);
   const [hoveredIssue, setHoveredIssue] = useState<{ row: number; column: string } | null>(null);
   const [hoverTimeout, setHoverTimeout] = useState<NodeJS.Timeout | null>(null);
 
-  // Initialize validation engine
-  const validationEngine = useMemo(() => createValidationEngine(), []);
-
-  // New modular validation using ValidationEngine
-  const validateData = useCallback(async (parsedData: { clients: ParsedData | null; workers: ParsedData | null; tasks: ParsedData | null }): Promise<ValidationIssue[]> => {
+  // New modular validation using the validators module
+  const validateData = useCallback((parsedData: { clients: ParsedData | null; workers: ParsedData | null; tasks: ParsedData | null }): ValidationIssue[] => {
     console.log('🔍 Starting modular validation...');
     
-    // Build validation context
-    const context = ValidationContextBuilder
-      .create()
-      .withClients(parsedData.clients)
-      .withWorkers(parsedData.workers)
-      .withTasks(parsedData.tasks)
-      .withConfig({ 
-        enabledValidators: [
-          'RequiredColumnsValidator',
-          'HeaderMappingValidator',
-          'DuplicateIDValidator',
-          'JSONValidator'
-        ],
+    // Convert ParsedData to ValidatedParsedData format
+    const validationData: ValidatedParsedData = {};
+    
+    if (parsedData.clients) {
+      validationData.clients = {
+        name: 'clients',
+        headers: parsedData.clients.headers,
+        rows: parsedData.clients.rows
+      };
+    }
+    
+    if (parsedData.workers) {
+      validationData.workers = {
+        name: 'workers', 
+        headers: parsedData.workers.headers,
+        rows: parsedData.workers.rows
+      };
+    }
+    
+    if (parsedData.tasks) {
+      validationData.tasks = {
+        name: 'tasks',
+        headers: parsedData.tasks.headers, 
+        rows: parsedData.tasks.rows
+      };
+    }
+
+    // Create validation context
+    const context: ValidatorContext = {
+      data: validationData,
+      config: {
         strictMode: false,
         autoFix: false,
-        skipDependentValidators: false
-      })
-      .build();
+        skipWarnings: false
+      }
+    };
 
     // Run validation
-    const issues = await validationEngine.runValidation(context);
-    console.log(`✅ Validation complete: ${issues.length} issues found`);
+    const result = runAllValidations(context);
+    console.log(`✅ Validation complete: ${result.issues.length} issues found`);
     
-    return issues;
-  }, [validationEngine]);
+    return result.issues;
+  }, []);
 
 
   const parseFiles = useCallback(async () => {
@@ -125,7 +141,7 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
       }
 
       // Validate data using the new modular system
-      const allIssues = await validateData(newParsedData);
+      const allIssues = validateData(newParsedData);
 
       setParsedData(newParsedData);
       setErrors(newErrors);
@@ -155,7 +171,7 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
     setParsedData(updatedParsedData);
 
     // Re-validate all data when it changes using the new system
-    const newIssues = await validateData(updatedParsedData);
+    const newIssues = validateData(updatedParsedData);
     setValidationIssues(newIssues);
   };
 
@@ -195,55 +211,137 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
     setHoveredIssue(null);
   };
 
+  const parseAIFix = (aiSuggestion: string): { action: string; value: string; fromValue?: string } | null => {
+    if (!aiSuggestion) return null;
+    
+    try {
+      // Extract fix value from AI response format: 💡 **Fix**: [value]
+      const fixMatch = aiSuggestion.match(/💡\s*\*\*Fix\*\*:\s*([^\n]*)/i);
+      const actionMatch = aiSuggestion.match(/📋\s*\*\*Action\*\*:\s*([^\n]*)/i);
+      
+      if (fixMatch) {
+        const fixValue = fixMatch[1].trim().replace(/^["\[]*|["\]]*$/g, ''); // Remove quotes/brackets
+        const actionText = actionMatch ? actionMatch[1].trim() : '';
+        
+        // Parse different action types
+        if (actionText.toLowerCase().includes('rename')) {
+          // Extract "from" value for rename actions
+          const renameMatch = actionText.match(/rename\s+([^\s]+)\s+to/i);
+          const fromValue = renameMatch ? renameMatch[1].trim() : undefined;
+          return { action: 'rename', value: fixValue, fromValue };
+        } else if (actionText.toLowerCase().includes('add')) {
+          return { action: 'add', value: fixValue };
+        } else {
+          return { action: 'replace', value: fixValue };
+        }
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Error parsing AI fix:', error);
+      return null;
+    }
+  };
+
+  const applyFixToData = (issue: ValidationIssue, parsedFix: { action: string; value: string; fromValue?: string }) => {
+    if (!parsedData || !issue.sheet) return;
+    
+    const { action, value, fromValue } = parsedFix;
+    const sheetName = issue.sheet as 'clients' | 'workers' | 'tasks';
+    
+    if (!parsedData[sheetName]) {
+      console.error('Sheet not found:', sheetName);
+      return;
+    }
+    
+    const sheetData = parsedData[sheetName]!;
+    const updatedSheetData = { ...sheetData };
+    
+    try {
+      if (issue.category === 'missing_columns' && action === 'rename' && fromValue) {
+        // Rename header: find similar header and rename it
+        const currentHeaders = [...updatedSheetData.headers];
+        const similarHeaderIndex = currentHeaders.findIndex((h: string) => 
+          h.toLowerCase().includes(fromValue.toLowerCase()) || 
+          fromValue.toLowerCase().includes(h.toLowerCase())
+        );
+        
+        if (similarHeaderIndex !== -1) {
+          // Update header
+          currentHeaders[similarHeaderIndex] = value;
+          
+          // Update all row data
+          const updatedRows = updatedSheetData.rows.map((row: any) => {
+            const newRow = { ...row };
+            const oldKey = updatedSheetData.headers[similarHeaderIndex];
+            if (oldKey in newRow) {
+              newRow[value] = newRow[oldKey];
+              delete newRow[oldKey];
+            }
+            return newRow;
+          });
+          
+          updatedSheetData.headers = currentHeaders;
+          updatedSheetData.rows = updatedRows;
+          
+          console.log(`✅ Renamed header "${updatedSheetData.headers[similarHeaderIndex]}" to "${value}"`);
+        }
+      } else if (issue.category === 'missing_columns' && action === 'add') {
+        // Add new header with empty values
+        if (!updatedSheetData.headers.includes(value)) {
+          updatedSheetData.headers.push(value);
+          updatedSheetData.rows = updatedSheetData.rows.map((row: any) => ({ ...row, [value]: '' }));
+          console.log(`✅ Added new column "${value}"`);
+        }
+      } else if (issue.row !== undefined && issue.column && (action === 'replace' || action === 'fix')) {
+        // Fix cell value
+        if (updatedSheetData.rows[issue.row] && issue.column in updatedSheetData.rows[issue.row]) {
+          const updatedRows = [...updatedSheetData.rows];
+          updatedRows[issue.row] = { ...updatedRows[issue.row], [issue.column]: value };
+          updatedSheetData.rows = updatedRows;
+          console.log(`✅ Fixed cell [${issue.row}, ${issue.column}] to "${value}"`);
+        }
+      }
+      
+      // Update the data using the correct handler
+      handleDataChange(sheetName)(updatedSheetData);
+      
+      // Set visual feedback
+      if (issue.column) {
+        if (issue.row !== undefined) {
+          setHighlightedCells([{ row: issue.row, column: issue.column }]);
+        } else {
+          setHighlightedCells([]);
+        }
+        setTimeout(() => setHighlightedCells([]), 2000);
+      }
+      
+    } catch (error) {
+      console.error('Error applying fix:', error);
+    }
+  };
+
   const handleApplyAIFix = async (issue: ValidationIssue, aiSuggestion?: string) => {
     console.log('Applying AI fix for:', issue);
     console.log('AI suggestion received:', aiSuggestion);
     
-    // Add the AI suggestion to the issue
-    if (aiSuggestion) {
-      issue.suggestedFix = aiSuggestion;
+    if (!aiSuggestion) {
+      console.error('No AI suggestion provided');
+      return;
     }
     
-    // Build current validation context
-    const context = ValidationContextBuilder
-      .create()
-      .withClients(parsedData.clients)
-      .withWorkers(parsedData.workers)
-      .withTasks(parsedData.tasks)
-      .build();
-
-    // Apply fix using the validation engine
-    const fixResult = await validationEngine.applyFix(issue, context);
+    // Parse the AI suggestion to extract actionable fix
+    const parsedFix = parseAIFix(aiSuggestion);
     
-    if (fixResult.success) {
-      console.log('✅ Fix applied successfully:', fixResult.message);
-      
-      // Update the data with the fixed version
-      if (fixResult.modifiedData) {
-        const updatedParsedData = {
-          ...parsedData,
-          [issue.sheet]: fixResult.modifiedData
-        };
-        
-        setParsedData(updatedParsedData);
-        
-        // Set visual feedback
-        if (issue.category === 'header' && issue.column) {
-          setHighlightedHeaders([{ sheet: issue.sheet, header: issue.column }]);
-          setTimeout(() => setHighlightedHeaders([]), 2000);
-        } else if (issue.row !== undefined && issue.column) {
-          setHighlightedCells([{ row: issue.row, column: issue.column }]);
-          setTimeout(() => setHighlightedCells([]), 2000);
-        }
-        
-        // Re-validate to update issues list
-        const newIssues = await validateData(updatedParsedData);
-        setValidationIssues(newIssues);
-      }
-    } else {
-      console.error('❌ Fix failed:', fixResult.message);
-      // Could show user notification here
+    if (!parsedFix) {
+      console.error('Could not parse AI suggestion:', aiSuggestion);
+      return;
     }
+    
+    console.log('Parsed fix:', parsedFix);
+    
+    // Apply the fix to the data
+    applyFixToData(issue, parsedFix);
   };
 
   // Clean up helper function that's still needed

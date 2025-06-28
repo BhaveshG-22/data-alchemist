@@ -10,26 +10,116 @@ const llm = new ChatOpenAI({
 
 // Define prompt templates for different issue types
 const PROMPT_TEMPLATES = {
-  header: `You are a data validation expert helping users fix file structure issues.
+  missing_columns: `You are a data validation expert helping users fix all header issues in a spreadsheet at once.
 
 Issue Context:
 - File Type: {fileType}
-- Issue: {issueMessage}
+- Sheet: {sheet}
 - Current Headers: {currentHeaders}
 - Required Headers: {requiredHeaders}
+- Missing Columns: {missingColumns}
+- Unexpected Columns: {unexpectedColumns}
+- Sample Data (first 5 rows): {sampleData}
 
-Task: Provide a specific header fix that can be applied automatically. Focus on exact header names to rename or add.
+Task: Create an optimal fix plan by matching unexpected columns with missing columns. ONLY work with the columns listed in "Missing Columns" and "Unexpected Columns" - do not suggest actions for any other columns.
+
+Critical Rules:
+1. ONLY suggest actions for columns explicitly listed in "Missing Columns" and "Unexpected Columns"
+2. If you rename an unexpected column to satisfy a missing column, DO NOT also suggest adding that missing column
+3. Only suggest adding a missing column if no unexpected column can be renamed to satisfy it
+4. Each unexpected column should only be used once in renames
+5. NEVER suggest actions for columns that are NOT in the missing or unexpected lists
+6. Analyze data content patterns for matching:
+   - Column with IDs like "C1", "C2", "W1" → should be "ClientID", "WorkerID", "TaskID"
+   - Column with names like "John Doe", "Acme Corp", "Jane Smith" → should be "ClientName", "WorkerName", "TaskName"
+   - Column with numbers 1-5 → likely "PriorityLevel"
+   - Column with skills/tags → likely "Skills" or "RequiredSkills"
+
+Analysis Algorithm (follow exactly):
+1. Create a list of all missing columns to process
+2. Create a list of all unexpected columns to process
+3. For each missing column:
+   a. Check if any unexpected column has matching data content
+   b. If match found: suggest rename (unexpected → missing) and remove both from processing lists
+   c. If no match: mark this missing column for addition
+4. For any remaining unexpected columns: suggest removal
+5. For any remaining missing columns: suggest addition
+
+IMPORTANT: Once you use an unexpected column in a rename, it's GONE - don't suggest removing it separately. Once you satisfy a missing column with a rename, it's SATISFIED - don't suggest adding it separately.
 
 Response format:
-💡 **Fix**: [Exact header name to use, e.g. "ClientID", "WorkerName"]
-📋 **Action**: [Specific action like "Rename customer_id to ClientID" or "Add missing ClientName column"]
-⚠️ **Note**: [Brief explanation]
+💡 **Header Fix Plan**:
+[Apply the algorithm step by step. For Missing: [ClientID, ClientName] and Unexpected: [clientid, clientID]:
 
-IMPORTANT: The Fix section should contain only the exact header name that should be used.
+Step 1: Match "ClientID" with "clientid" (IDs like C1, C2) → Rename "clientid" to "ClientID"
+Step 2: Match "ClientName" with "clientID" (names like Acme Corp) → Rename "clientID" to "ClientName"
+Step 3: All missing columns satisfied, all unexpected columns used - DONE
+
+Result:
+- Rename "clientid" to "ClientID" (satisfies missing ClientID)
+- Rename "clientID" to "ClientName" (satisfies missing ClientName)
+
+DO NOT add or remove anything else since all columns are accounted for.]
+
+📋 **Priority**: Renames first, then additions, finally removals
+⚠️ **Note**: [Brief explanation of the matching logic used]
 
 Solution:`,
 
-  data: `You are a data validation expert helping users fix data type and format issues.
+  duplicate_ids: `You are a data validation expert helping users fix duplicate ID issues.
+
+Issue Context:
+- File Type: {fileType}
+- Column: {column}
+- Issue: {issueMessage}
+- Duplicate Value: {currentValue}
+
+Task: Suggest a unique replacement ID that follows the same pattern.
+
+Response format:
+💡 **Fix**: [Exact unique ID to use, e.g. "client_124", "TASK_005"]
+📋 **Pattern**: [Explain the ID pattern used]
+⚠️ **Note**: [Brief explanation]
+
+Solution:`,
+
+  malformed_lists: `You are a data validation expert helping users fix list format issues.
+
+Issue Context:
+- File Type: {fileType}
+- Column: {column}
+- Issue: {issueMessage}
+- Current Value: {currentValue}
+- Expected Format: {expectedFormat}
+
+Task: Convert the malformed list into proper comma-separated format.
+
+Response format:
+💡 **Fix**: [Exact comma-separated list, e.g. "skill1,skill2,skill3" or "1,2,3"]
+📝 **Format**: [Explain the correct format]
+✅ **Example**: [Show example]
+
+Solution:`,
+
+  out_of_range: `You are a data validation expert helping users fix out-of-range values.
+
+Issue Context:
+- File Type: {fileType}
+- Column: {column}
+- Issue: {issueMessage}
+- Current Value: {currentValue}
+- Valid Range: {expectedFormat}
+
+Task: Suggest a valid value within the acceptable range.
+
+Response format:
+💡 **Fix**: [Exact value within range, e.g. "3", "2.5"]
+📊 **Range**: [Explain the valid range]
+🎯 **Reasoning**: [Why this value makes sense]
+
+Solution:`,
+
+  json_fields: `You are a data validation expert helping users fix JSON format issues.
 
 Issue Context:
 - File Type: {fileType}
@@ -50,7 +140,56 @@ Important: The Fix section should contain the EXACT value that should replace th
 
 Solution:`,
 
-  format: `You are a data validation expert helping users fix format and structure issues.
+  references: `You are a data validation expert helping users fix reference issues.
+
+Issue Context:
+- File Type: {fileType}
+- Column: {column}
+- Issue: {issueMessage}
+- Invalid Reference: {currentValue}
+
+Task: Suggest valid references that exist in the target sheet.
+
+Response format:
+💡 **Fix**: [Valid reference ID that exists, or suggest removal]
+🔗 **Available IDs**: [List some valid IDs if known]
+📋 **Action**: [Specific action to take]
+
+Solution:`,
+
+  overloaded_workers: `You are a data validation expert helping users fix worker capacity issues.
+
+Issue Context:
+- File Type: {fileType}
+- Issue: {issueMessage}
+- Current Value: {currentValue}
+
+Task: Suggest capacity adjustments to resolve overload.
+
+Response format:
+💡 **Fix**: [Exact value adjustment, e.g. reduce MaxLoadPerPhase to "8" or increase AvailableSlots to "12"]
+👥 **Reasoning**: [Explain the capacity logic]
+⚖️ **Balance**: [How this creates proper balance]
+
+Solution:`,
+
+  skill_coverage: `You are a data validation expert helping users fix skill coverage issues.
+
+Issue Context:
+- File Type: {fileType}
+- Issue: {issueMessage}
+- Missing Skill: {currentValue}
+
+Task: Suggest how to resolve the skill coverage gap.
+
+Response format:
+💡 **Fix**: [Specific action - add worker with skill, remove task requirement, etc.]
+🎯 **Skills**: [Specific skills to add or modify]
+📋 **Implementation**: [How to implement the fix]
+
+Solution:`,
+
+  concurrency_feasibility: `You are a data validation expert helping users fix concurrency issues.
 
 Issue Context:
 - File Type: {fileType}
@@ -75,7 +214,52 @@ IMPORTANT: Return ONLY the JSON object in the Fix section. Do not wrap it with t
 
 Solution:`,
 
-  missing: `You are a data validation expert helping users fix missing data issues.
+  circular_corun: `You are a data validation expert helping users fix circular dependency issues.
+
+Issue Context:
+- File Type: {fileType}
+- Issue: {issueMessage}
+
+Task: Suggest how to break the circular dependency.
+
+Response format:
+💡 **Fix**: [Specific action to break the cycle]
+♻️ **Dependencies**: [Show the dependency chain]
+🔧 **Resolution**: [How to restructure]
+
+Solution:`,
+
+  conflicting_rules: `You are a data validation expert helping users fix conflicting business rules.
+
+Issue Context:
+- File Type: {fileType}
+- Issue: {issueMessage}
+
+Task: Suggest how to resolve the rule conflict.
+
+Response format:
+💡 **Fix**: [Specific rule modification]
+⚠️ **Conflict**: [Explain the conflict]
+🔧 **Resolution**: [How to resolve]
+
+Solution:`,
+
+  phase_saturation: `You are a data validation expert helping users fix phase capacity issues.
+
+Issue Context:
+- File Type: {fileType}
+- Issue: {issueMessage}
+
+Task: Suggest capacity adjustments for phases.
+
+Response format:
+💡 **Fix**: [Specific capacity adjustment]
+📈 **Saturation**: [Explain the saturation issue]
+⚖️ **Balance**: [How to rebalance]
+
+Solution:`,
+
+  missing_data: `You are a data validation expert helping users fix missing data issues.
 
 Issue Context:
 - File Type: {fileType}
@@ -91,36 +275,6 @@ Response format:
 📋 **Alternatives**: [Other valid options]
 
 Important: The Suggested Value should be the EXACT text to put in the cell.
-
-Solution:`,
-
-  smart_header_match: `You are a data validation expert helping users fix header mapping issues by analyzing sample data.
-
-Issue Context:
-- File Type: {fileType}
-- Missing Required Header: {missingHeader}
-- Unexpected Headers: {unexpectedHeaders}
-- Sample Data from Unexpected Headers: {sampleData}
-
-Task: Determine if any unexpected header should be renamed to the missing required header based on the sample data content.
-
-Analysis Guidelines:
-1. Look at the sample data values in each unexpected header
-2. Consider if the data type and content match what the missing header should contain
-3. Check for obvious spelling mistakes or variations
-4. Consider common naming patterns (e.g., worker_name vs WorkerName, clientID vs ClientID)
-
-Response format:
-💡 **Fix**: [Either the unexpected header name that should be renamed, or "AddNewColumn" if none match]
-📊 **Reasoning**: [Explain why this header matches or why a new column is needed]
-🔍 **Data Analysis**: [Brief analysis of the sample data that led to this decision]
-
-Examples:
-- If "WorkerNamee" contains names like "John", "Mary" → rename to "WorkerName"
-- If "client_id" contains IDs like "C001", "C002" → rename to "ClientID"  
-- If no unexpected header has matching data → suggest "AddNewColumn"
-
-Important: Only suggest renaming if you're confident the data content matches the expected field type.
 
 Solution:`
 };
@@ -160,7 +314,7 @@ const FILE_CONTEXTS = {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { issue, currentHeaders, sampleData } = body;
+    const { issue, currentHeaders, sampleData, missingColumns, unexpectedColumns, requiredHeaders, sheet } = body;
 
     if (!issue) {
       return NextResponse.json(
@@ -174,7 +328,7 @@ export async function POST(request: NextRequest) {
     
     // Select appropriate prompt template
     const templateKey = issue.category as keyof typeof PROMPT_TEMPLATES;
-    const promptTemplate = PROMPT_TEMPLATES[templateKey] || PROMPT_TEMPLATES.data;
+    const promptTemplate = PROMPT_TEMPLATES[templateKey] || PROMPT_TEMPLATES.json_fields;
 
     // Helper function to sanitize values for LangChain
     const sanitizeValue = (value: unknown): string => {
@@ -186,17 +340,44 @@ export async function POST(request: NextRequest) {
       return String(value).replace(/[{}]/g, '').trim() || 'Not provided';
     };
 
+    // Format sample data for display
+    const formatSampleData = (data: Record<string, any[]>) => {
+      if (!data || Object.keys(data).length === 0) return 'No sample data available';
+      
+      // Debug: Log the actual sample data
+      console.log('Sample data being sent to AI:', JSON.stringify(data, null, 2));
+      
+      const formatted = Object.entries(data).map(([column, values]) => {
+        const sampleValues = values.slice(0, 5).map(v => `"${v}"`).join(', ');
+        return `${column}: [${sampleValues}]`;
+      }).join('\n');
+      
+      console.log('Formatted sample data for AI:', formatted);
+      return formatted;
+    };
+
+    // Debug: Log what we're receiving
+    console.log('AI Fix Debug - Received data:');
+    console.log('- currentHeaders:', currentHeaders);
+    console.log('- requiredHeaders:', requiredHeaders);
+    console.log('- missingColumns:', missingColumns);
+    console.log('- unexpectedColumns:', unexpectedColumns);
+
     // Create a comprehensive variable set with all possible variables that any template might need
     const promptVariables: Record<string, string> = {
       // Base variables (used in all templates)
       fileType: sanitizeValue(`${issue.sheet} (${fileContext?.description || 'data file'})`),
       issueMessage: sanitizeValue(issue.message),
+      sheet: sanitizeValue(sheet || issue.sheet || 'Unknown'),
       
-      // Header-specific variables (for header template)
+      // Header-specific variables (for missing_columns template)
       currentHeaders: sanitizeValue(currentHeaders ? currentHeaders.join(', ') : 'Not provided'),
-      requiredHeaders: sanitizeValue(fileContext?.requiredHeaders?.join(', ') || 'Not specified'),
+      requiredHeaders: sanitizeValue(requiredHeaders ? requiredHeaders.join(', ') : fileContext?.requiredHeaders?.join(', ') || 'Not specified'),
+      missingColumns: sanitizeValue(missingColumns ? missingColumns.join(', ') : 'None'),
+      unexpectedColumns: sanitizeValue(unexpectedColumns ? unexpectedColumns.join(', ') : 'None'),
+      sampleData: formatSampleData(sampleData || {}),
       
-      // Data/row-specific variables (for data, missing, format templates)
+      // Data/row-specific variables (for other templates)
       column: sanitizeValue(issue.column || 'Unknown'),
       row: sanitizeValue(issue.row !== undefined ? (issue.row + 1).toString() : 'Unknown'),
       currentValue: sanitizeValue(sampleData?.currentValue || 'Empty'),
@@ -293,24 +474,43 @@ function getFallbackSuggestion(issue: { category?: string; message?: string; she
   if (!issue || !issue.message) return 'Please check your data format and try again.';
 
   switch (issue.category) {
-    case 'header':
-      if (issue.message.includes('Missing required header')) {
-        const headerName = issue.message.split(': ')[1];
-        return `💡 **Add Missing Header**: Add a column named "${headerName}" to your ${issue.sheet} file.\n\n📋 **Steps**:\n1. Open your file in Excel/Google Sheets\n2. Add "${headerName}" as a new column header\n3. Fill the column with appropriate data\n4. Save and re-upload the file`;
-      } else if (issue.message.includes('Unexpected header')) {
-        const headerName = issue.message.split(': ')[1];
-        return `💡 **Remove Unexpected Header**: The column "${headerName}" should not be in the ${issue.sheet} file.\n\n📋 **Options**:\n1. Delete this column if not needed\n2. Move this data to the correct file type\n3. Rename if it matches a required header`;
+    case 'missing_columns':
+      if (issue.message.includes('Missing required column')) {
+        const columnName = issue.column || 'unknown';
+        return `💡 **Add Missing Column**: Add a column named "${columnName}" to your ${issue.sheet} file.\n\n📋 **Steps**:\n1. Open your file in Excel/Google Sheets\n2. Add "${columnName}" as a new column header\n3. Fill the column with appropriate data\n4. Save and re-upload the file`;
+      } else if (issue.message.includes('Unexpected column')) {
+        const columnName = issue.column || 'unknown';
+        return `💡 **Remove Unexpected Column**: The column "${columnName}" should not be in the ${issue.sheet} file.\n\n📋 **Options**:\n1. Delete this column if not needed\n2. Move this data to the correct file type\n3. Rename if it matches a required column`;
       }
       break;
 
-    case 'data':
-      return `💡 **Fix Data Value**: Update the value in ${issue.column} to match the required format.\n\n📊 **Common fixes**:\n• PriorityLevel: Use numbers 1-5\n• Numeric fields: Use whole numbers\n• JSON fields: Ensure valid JSON format`;
+    case 'duplicate_ids':
+      const duplicateValue = (issue as any).value || 'unknown';
+      return `💡 **Fix Duplicate ID**: Change the duplicate ID "${duplicateValue}" to a unique identifier.\n\n🔄 **Suggestions**:\n• Add a suffix: ${duplicateValue}_2\n• Use a timestamp: ${duplicateValue}_${Date.now()}\n• Follow your ID pattern`;
 
-    case 'missing':
-      return `💡 **Fill Missing Data**: Add a value for ${issue.column} in row ${(issue.row || 0) + 1}.\n\n🎯 **Suggestions**:\n• Use appropriate default values\n• Reference your business requirements\n• Ensure consistency with other rows`;
+    case 'malformed_lists':
+      return `💡 **Fix List Format**: Update ${issue.column} to use comma-separated values.\n\n📝 **Examples**:\n• Skills: "javascript,python,react"\n• IDs: "1,2,3,4"\n• Remove extra spaces and special characters`;
 
-    case 'format':
-      return `💡 **Fix Format**: Update ${issue.column} to use the correct data format.\n\n📝 **Check**:\n• JSON fields need valid JSON syntax\n• Arrays should be formatted as [1,2,3]\n• Numbers should not contain text`;
+    case 'out_of_range':
+      return `💡 **Fix Range Value**: Update ${issue.column} to use a valid range value.\n\n📊 **Check**:\n• PriorityLevel: Use numbers 1-5\n• Duration: Use positive numbers\n• Ensure numeric values are within limits`;
+
+    case 'json_fields':
+      return `💡 **Fix JSON Format**: Update ${issue.column} to use valid JSON syntax.\n\n🔧 **Example**:\n• Good: {"key": "value", "number": 123}\n• Bad: {key: value, number: 123}\n• Ensure quotes around keys and string values`;
+
+    case 'references':
+      return `💡 **Fix Reference**: Ensure the referenced ID exists in the target sheet.\n\n🔗 **Actions**:\n• Check if the ID exists in the referenced sheet\n• Remove invalid references\n• Update to valid IDs`;
+
+    case 'overloaded_workers':
+      return `💡 **Fix Worker Capacity**: Adjust worker capacity settings.\n\n👥 **Options**:\n• Reduce MaxLoadPerPhase\n• Increase AvailableSlots\n• Redistribute workload`;
+
+    case 'skill_coverage':
+      return `💡 **Fix Skill Coverage**: Ensure all required skills are available.\n\n🎯 **Solutions**:\n• Add workers with missing skills\n• Update worker skill lists\n• Remove tasks requiring unavailable skills`;
+
+    case 'concurrency_feasibility':
+      return `💡 **Fix Concurrency**: Update concurrency settings for feasibility.\n\n⚡ **Check**:\n• Ensure MaxConcurrent is positive\n• Verify capacity limits\n• Adjust based on worker availability`;
+
+    default:
+      return 'Please review the data format requirements and update accordingly.';
   }
 
   return 'Please review the data format requirements and update accordingly.';
