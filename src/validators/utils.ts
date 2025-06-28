@@ -52,10 +52,23 @@ export function normalizePhase(phase: string): string {
 
 export function parseNumericArray(value: unknown): { isValid: boolean; parsed?: number[]; error?: string } {
   if (!value) return { isValid: true, parsed: [] };
-  
+
   if (typeof value === 'string') {
     try {
-      // Handle comma-separated values
+      // Try JSON parsing if it looks like an array
+      const looksLikeArray = value.trim().startsWith('[') && value.trim().endsWith(']');
+      if (looksLikeArray) {
+        const parsed = JSON.parse(value);
+        if (!Array.isArray(parsed)) throw new Error('Not an array');
+        const numbers = parsed.map((v: any) => {
+          const num = parseFloat(v);
+          if (isNaN(num)) throw new Error(`Invalid number: ${v}`);
+          return num;
+        });
+        return { isValid: true, parsed: numbers };
+      }
+
+      // Otherwise, treat as comma-separated string
       const parts = value.split(',').map(s => s.trim()).filter(Boolean);
       const numbers = parts.map(part => {
         const num = parseFloat(part);
@@ -67,7 +80,7 @@ export function parseNumericArray(value: unknown): { isValid: boolean; parsed?: 
       return { isValid: false, error: error instanceof Error ? error.message : 'Invalid numeric array' };
     }
   }
-  
+
   if (Array.isArray(value)) {
     const numbers = value.map(v => parseFloat(v));
     if (numbers.some(isNaN)) {
@@ -75,9 +88,10 @@ export function parseNumericArray(value: unknown): { isValid: boolean; parsed?: 
     }
     return { isValid: true, parsed: numbers };
   }
-  
+
   return { isValid: false, error: 'Value must be a string or array' };
 }
+
 
 export function isInRange(value: number, min?: number, max?: number): boolean {
   if (min !== undefined && value < min) return false;

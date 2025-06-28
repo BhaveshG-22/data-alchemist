@@ -17,8 +17,8 @@ import { validateConcurrencyFeasibility } from './validateConcurrencyFeasibility
 
 const VALIDATORS = [
   validateMissingColumns,
-  // validateDuplicateIDs,
-  // validateMalformedLists,
+  validateDuplicateIDs,
+  validateMalformedLists,
   // validateOutOfRange,
   // validateJSONFields,
   // validateReferences,

@@ -24,10 +24,10 @@ export function validateDuplicateIDs(context: ValidatorContext): ValidationIssue
         issues.push(
           createValidationIssue(
             'duplicate_ids',
-            `Empty ${idColumn} in row ${i + 1}`,
+            `Empty ${idColumn} in row ${i}`,
             {
               sheet: sheetName,
-              row: i + 1,
+              row: i,
               column: idColumn,
               type: 'error',
               suggestion: `Provide a unique ${idColumn}`,
@@ -42,10 +42,10 @@ export function validateDuplicateIDs(context: ValidatorContext): ValidationIssue
         issues.push(
           createValidationIssue(
             'duplicate_ids',
-            `Duplicate ${idColumn} '${value}' found in row ${i + 1}`,
+            `Duplicate ${idColumn} '${value}' found in row ${i}`,
             {
               sheet: sheetName,
-              row: i + 1,
+              row: i,
               column: idColumn,
               value,
               type: 'error',
