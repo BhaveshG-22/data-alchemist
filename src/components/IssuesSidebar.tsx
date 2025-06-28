@@ -67,9 +67,9 @@ export default function IssuesSidebar({ issues, parsedData, activeTab, onIssueCl
   const currentData = parsedData[activeTab];
 
   return (
-    <div className="w-80 bg-white border-l border-gray-200 flex flex-col h-full">
-      {/* Header */}
-      <div className="p-4 border-b border-gray-200 bg-gray-50">
+    <div className="w-80 bg-white border-l border-gray-200 flex flex-col h-screen">
+      {/* Header - Fixed */}
+      <div className="flex-shrink-0 p-4 border-b border-gray-200 bg-gray-50">
         <h3 className="text-lg font-semibold text-gray-900 mb-2">Validation Issues</h3>
         <div className="text-sm text-gray-600 capitalize mb-3">
           {activeTab} Sheet
@@ -94,8 +94,8 @@ export default function IssuesSidebar({ issues, parsedData, activeTab, onIssueCl
         )}
       </div>
 
-      {/* Issues List */}
-      <div className="flex-1 overflow-y-auto">
+      {/* Issues List - Scrollable */}
+      <div className="flex-1 overflow-y-auto min-h-0">
         {filteredIssues.length === 0 ? (
           <div className="p-4 text-center">
             <div className="text-green-500 mb-2">
@@ -107,12 +107,12 @@ export default function IssuesSidebar({ issues, parsedData, activeTab, onIssueCl
             <p className="text-xs text-gray-500 mt-1">Your {activeTab} data looks good.</p>
           </div>
         ) : (
-          <div className="p-2">
+          <div className="p-2 space-y-2">
             {filteredIssues.map((issue, index) => (
               <div
                 key={index}
                 onClick={() => onIssueClick?.(issue)}
-                className="p-3 mb-2 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
+                className="p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
               >
                 <div className="flex items-start space-x-3">
                   <div className="flex-shrink-0 mt-0.5">
@@ -146,9 +146,9 @@ export default function IssuesSidebar({ issues, parsedData, activeTab, onIssueCl
         )}
       </div>
 
-      {/* Footer Actions */}
+      {/* Footer Actions - Fixed */}
       {filteredIssues.length > 0 && (
-        <div className="p-4 border-t border-gray-200 bg-gray-50">
+        <div className="flex-shrink-0 p-4 border-t border-gray-200 bg-gray-50">
           <button className="w-full bg-blue-600 text-white text-sm py-2 px-3 rounded-lg hover:bg-blue-700 transition-colors">
             Auto-fix Issues
           </button>
