@@ -8,6 +8,8 @@ interface EditableDataTableProps {
   data: ParsedData;
   onDataChange: (newData: ParsedData) => void;
   title: string;
+  highlightedCells?: Array<{ row: number; column: string }>;
+  onHighlightComplete?: () => void;
 }
 
 interface EditableColumn {
@@ -18,13 +20,30 @@ interface EditableColumn {
   width?: string;
 }
 
-export default function EditableDataTable({ data, onDataChange, title }: EditableDataTableProps) {
+export default function EditableDataTable({ data, onDataChange, title, highlightedCells = [], onHighlightComplete }: EditableDataTableProps) {
   const [tableData, setTableData] = useState(data.rows);
   const [editingCell, setEditingCell] = useState<{ rowIndex: number; column: string } | null>(null);
+  const [flashingCells, setFlashingCells] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     setTableData(data.rows);
   }, [data]);
+
+  // Handle highlighting when cells are marked for highlight
+  useEffect(() => {
+    if (highlightedCells.length > 0) {
+      const cellKeys = new Set(highlightedCells.map(cell => `${cell.row}-${cell.column}`));
+      setFlashingCells(cellKeys);
+      
+      // Remove highlight after animation
+      const timer = setTimeout(() => {
+        setFlashingCells(new Set());
+        onHighlightComplete?.();
+      }, 2000); // 2 second highlight duration
+      
+      return () => clearTimeout(timer);
+    }
+  }, [highlightedCells, onHighlightComplete]);
 
   const handleCellEdit = (rowIndex: number, column: string, value: string) => {
     const newData = [...tableData];
@@ -49,6 +68,8 @@ export default function EditableDataTable({ data, onDataChange, title }: Editabl
   const renderEditableCell = (row: any, rowIndex: number, column: string) => {
     const isEditing = editingCell?.rowIndex === rowIndex && editingCell?.column === column;
     const value = row[column] || '';
+    const cellKey = `${rowIndex}-${column}`;
+    const isFlashing = flashingCells.has(cellKey);
 
     if (isEditing) {
       return (
@@ -71,7 +92,11 @@ export default function EditableDataTable({ data, onDataChange, title }: Editabl
     return (
       <div
         onClick={() => handleCellClick(rowIndex, column)}
-        className="w-full px-2 py-1 cursor-pointer hover:bg-gray-100 rounded min-h-[32px] flex items-center"
+        className={`w-full px-2 py-1 cursor-pointer rounded min-h-[32px] flex items-center transition-all duration-300 ${
+          isFlashing
+            ? 'bg-green-200 border-2 border-green-400 animate-pulse shadow-lg'
+            : 'hover:bg-gray-100'
+        }`}
         title="Click to edit"
       >
         {value || <span className="text-gray-400">Click to edit</span>}
@@ -82,7 +107,11 @@ export default function EditableDataTable({ data, onDataChange, title }: Editabl
   const columns: EditableColumn[] = data.headers.map(header => ({
     name: header,
     selector: (row: any) => row[header],
-    cell: (row: any, index: number) => renderEditableCell(row, index, header),
+    cell: (row: any, index: number) => {
+      // Find the actual row index in the data
+      const actualRowIndex = tableData.findIndex(dataRow => dataRow === row);
+      return renderEditableCell(row, actualRowIndex, header);
+    },
     sortable: true,
     width: '150px'
   }));

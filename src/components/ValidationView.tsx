@@ -39,10 +39,11 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
   
   const [activeTab, setActiveTab] = useState<'clients' | 'workers' | 'tasks'>('clients');
   const [validationIssues, setValidationIssues] = useState<ValidationIssue[]>([]);
+  const [highlightedCells, setHighlightedCells] = useState<Array<{ row: number; column: string }>>([]);
 
   // Required headers for each sheet type
   const requiredHeaders = {
-    clients: ['ClientID', 'ClientName', 'PriorityLevel', 'RequestedTaskIDs', 'GroupTag', 'AttributesJSO'],
+    clients: ['ClientID', 'ClientName', 'PriorityLevel', 'RequestedTaskIDs', 'GroupTag', 'AttributesJSON'],
     workers: ['WorkerID', 'WorkerName', 'Skills', 'AvailableSlots', 'MaxLoadPerPhase', 'WorkerGroup', 'QualificationLevel'],
     tasks: ['TaskID', 'TaskName', 'Category', 'Duration', 'RequiredSkills', 'PreferredPhases', 'MaxConcurrent']
   };
@@ -268,11 +269,69 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
       ...prev,
       [type]: newData
     }));
+
+    // Re-validate data when it changes
+    const newIssues = validateData(newData, type);
+    setValidationIssues(prevIssues => {
+      // Remove old issues for this sheet type
+      const filteredIssues = prevIssues.filter(issue => issue.sheet !== type);
+      // Add new issues for this sheet type
+      return [...filteredIssues, ...newIssues];
+    });
   };
 
   const handleIssueClick = (issue: ValidationIssue) => {
     // Handle clicking on an issue in the sidebar
     console.log('Issue clicked:', issue);
+  };
+
+  const handleApplyAIFix = (issue: ValidationIssue) => {
+    console.log('Applying AI fix for:', issue);
+    
+    // Simulate applying a fix and highlight the changed cells
+    const changedCells: Array<{ row: number; column: string }> = [];
+    
+    if (issue.category === 'data' && issue.row !== undefined && issue.column) {
+      // For data issues, highlight the specific cell that was fixed
+      changedCells.push({ row: issue.row, column: issue.column });
+      
+      // Apply the actual fix to the data
+      const currentData = parsedData[issue.sheet];
+      if (currentData) {
+        const newData = { ...currentData };
+        const newRows = [...newData.rows];
+        
+        // Example fixes based on issue type
+        if (issue.message.includes('PriorityLevel')) {
+          newRows[issue.row] = { ...newRows[issue.row], [issue.column]: '3' }; // Set to medium priority
+        } else if (issue.message.includes('Empty required field')) {
+          // Provide a default value based on column type
+          const defaultValue = getDefaultValueForColumn(issue.column, issue.sheet);
+          newRows[issue.row] = { ...newRows[issue.row], [issue.column]: defaultValue };
+        }
+        
+        newData.rows = newRows;
+        handleDataChange(issue.sheet)(newData);
+      }
+    }
+    
+    // Set highlighted cells to show visual feedback
+    setHighlightedCells(changedCells);
+  };
+
+  const getDefaultValueForColumn = (column: string, sheet: 'clients' | 'workers' | 'tasks'): string => {
+    // Provide smart defaults based on column name and sheet type
+    if (column.toLowerCase().includes('id')) return `${sheet.slice(0, -1)}_${Date.now()}`;
+    if (column.toLowerCase().includes('name')) return 'Auto-generated Name';
+    if (column.toLowerCase().includes('priority')) return '3';
+    if (column.toLowerCase().includes('duration')) return '1';
+    if (column.toLowerCase().includes('maxconcurrent')) return '1';
+    if (column.toLowerCase().includes('maxloadperphase')) return '5';
+    return 'Auto-filled';
+  };
+
+  const handleHighlightComplete = () => {
+    setHighlightedCells([]);
   };
 
   if (loading) {
@@ -330,6 +389,8 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
             errors={errors}
             onDataChange={handleDataChange}
             onTabChange={setActiveTab}
+            highlightedCells={highlightedCells}
+            onHighlightComplete={handleHighlightComplete}
           />
         </div>
 
@@ -339,6 +400,7 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
           parsedData={parsedData}
           activeTab={activeTab}
           onIssueClick={handleIssueClick}
+          onApplyFix={handleApplyAIFix}
         />
       </div>
     </div>

@@ -17,9 +17,11 @@ interface TabbedDataViewProps {
   };
   onDataChange: (type: 'clients' | 'workers' | 'tasks') => (newData: ParsedData) => void;
   onTabChange?: (tab: 'clients' | 'workers' | 'tasks') => void;
+  highlightedCells?: Array<{ row: number; column: string }>;
+  onHighlightComplete?: () => void;
 }
 
-export default function TabbedDataView({ parsedData, errors, onDataChange, onTabChange }: TabbedDataViewProps) {
+export default function TabbedDataView({ parsedData, errors, onDataChange, onTabChange, highlightedCells, onHighlightComplete }: TabbedDataViewProps) {
   const [activeTab, setActiveTab] = useState<'clients' | 'workers' | 'tasks'>('clients');
 
   const handleTabChange = (tab: 'clients' | 'workers' | 'tasks') => {
@@ -103,6 +105,8 @@ export default function TabbedDataView({ parsedData, errors, onDataChange, onTab
               data={activeTabData.data}
               onDataChange={onDataChange(activeTab)}
               title=""
+              highlightedCells={highlightedCells}
+              onHighlightComplete={onHighlightComplete}
             />
           </div>
         ) : (
