@@ -40,11 +40,15 @@ export function parseJSON(value: unknown): { isValid: boolean; parsed?: unknown;
 
   try {
     const parsed = JSON.parse(value);
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+      return { isValid: false, error: 'Expected a JSON object' };
+    }
     return { isValid: true, parsed };
   } catch (error) {
     return { isValid: false, error: error instanceof Error ? error.message : 'Invalid JSON' };
   }
 }
+
 
 export function normalizePhase(phase: string): string {
   return phase.toLowerCase().trim().replace(/\s+/g, '_');

@@ -1,7 +1,9 @@
 import { ValidatorContext, ValidationIssue } from './types';
 import { createValidationIssue, isInRange, getColumnValue } from './utils';
 
-const RANGE_VALIDATIONS = {
+type Range = { min: number; max?: number };
+
+const RANGE_VALIDATIONS: Record<string, Record<string, Range>> = {
   clients: {
     PriorityLevel: { min: 1, max: 5 },
   },
@@ -26,7 +28,8 @@ export function validateOutOfRange(context: ValidatorContext): ValidationIssue[]
       if (!sheet.headers.includes(column)) continue;
 
       for (let i = 0; i < sheet.rows.length; i++) {
-        const value = getColumnValue(sheet.rows[i], column);
+        const rawValue = getColumnValue(sheet.rows[i], column);
+        const value = rawValue !== undefined && rawValue !== null ? String(rawValue).trim() : '';
         if (value === null || value === undefined || value === '') continue;
 
         const numValue = parseFloat(value);
@@ -73,6 +76,8 @@ export function validateOutOfRange(context: ValidatorContext): ValidationIssue[]
 
   return issues;
 }
+
+
 
 function getRangeText(min?: number, max?: number): string {
   if (min !== undefined && max !== undefined) {

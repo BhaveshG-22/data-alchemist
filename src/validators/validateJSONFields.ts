@@ -18,17 +18,22 @@ export function validateJSONFields(context: ValidatorContext): ValidationIssue[]
 
       for (let i = 0; i < sheet.rows.length; i++) {
         const value = getColumnValue(sheet.rows[i], column);
+
+
         if (!value || value === '') continue;
 
         const result = parseJSON(value);
+
+
         if (!result.isValid) {
+
           issues.push(
             createValidationIssue(
               'json_fields',
-              `Invalid JSON in ${column} at row ${i + 1}: ${result.error}`,
+              `Invalid JSON in ${column} at row ${i}: ${result.error}`,
               {
                 sheet: sheetName,
-                row: i + 1,
+                row: i,
                 column,
                 value,
                 type: 'error',

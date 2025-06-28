@@ -1,5 +1,5 @@
 import { ValidatorContext, ValidationIssue } from './types';
-import { createValidationIssue, parseNumericArray, getColumnValue } from './utils';
+import { createValidationIssue, getColumnValue } from './utils';
 
 export function validateReferences(context: ValidatorContext): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
@@ -13,29 +13,30 @@ export function validateReferences(context: ValidatorContext): ValidationIssue[]
 
     for (let i = 0; i < data.clients.rows.length; i++) {
       const requestedTaskIDs = getColumnValue(data.clients.rows[i], 'RequestedTaskIDs');
-      if (!requestedTaskIDs) continue;
+      if (!requestedTaskIDs || typeof requestedTaskIDs !== 'string') continue;
 
-      const result = parseNumericArray(requestedTaskIDs);
-      if (result.isValid && result.parsed) {
-        for (const taskId of result.parsed) {
-          const taskIdStr = String(taskId);
-          if (!taskIds.has(taskIdStr)) {
-            issues.push(
-              createValidationIssue(
-                'references',
-                `Task ID '${taskId}' in RequestedTaskIDs at row ${i + 1} does not exist in tasks sheet`,
-                {
-                  sheet: 'clients',
-                  row: i + 1,
-                  column: 'RequestedTaskIDs',
-                  value: taskId,
-                  type: 'error',
-                  suggestion: `Ensure task '${taskId}' exists in the tasks sheet or remove it from RequestedTaskIDs`,
-                  fixable: true,
-                }
-              )
-            );
-          }
+      const ids = requestedTaskIDs
+        .split(',')
+        .map(id => id.trim())
+        .filter(Boolean);
+
+      for (const taskId of ids) {
+        if (!taskIds.has(taskId)) {
+          issues.push(
+            createValidationIssue(
+              'references',
+              `Task ID '${taskId}' in RequestedTaskIDs at row ${i} does not exist in tasks sheet`,
+              {
+                sheet: 'clients',
+                row: i,
+                column: 'RequestedTaskIDs',
+                value: taskId,
+                type: 'error',
+                suggestion: `Ensure task '${taskId}' exists in the tasks sheet or remove it from RequestedTaskIDs`,
+                fixable: true,
+              }
+            )
+          );
         }
       }
     }

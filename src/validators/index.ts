@@ -16,13 +16,13 @@ import { validateSkillCoverage } from './validateSkillCoverage';
 import { validateConcurrencyFeasibility } from './validateConcurrencyFeasibility';
 
 const VALIDATORS = [
-  validateMissingColumns,
-  validateDuplicateIDs,
-  validateMalformedLists,
+  // validateMissingColumns, DONE
+  // validateDuplicateIDs,DONE
+  // validateMalformedLists,DONE
   // validateOutOfRange,
-  // validateJSONFields,
-  // validateReferences,
-  // validateCircularCoRun,
+  // validateJSONFields,  DONE
+  // validateReferences, DONE
+  validateCircularCoRun,
   // validateConflictingRules,
   // validateOverloadedWorkers,
   // validatePhaseSaturation,

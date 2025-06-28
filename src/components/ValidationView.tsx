@@ -548,7 +548,7 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
           </div>
           
           <div className="mt-4 text-xs text-gray-500">
-            🤖 AI is analyzing your data for optimal column mapping
+            LLM is analyzing your data for optimal column mapping
           </div>
         </div>
       </div>
