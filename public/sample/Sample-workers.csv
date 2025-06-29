@@ -1,94 +1,51 @@
 WorkerID,WorkerName,Skills,AvailableSlots,MaxLoadPerPhase,WorkerGroup,QualificationLevel
-W001,Alice Johnson,javascript,5,4,frontend,8
-W002,Bob Smith,sql,4,3,database,7
-W003,Carol White,design,6,5,creative,9
-W004,David Brown,python,8,6,analytics,8
-W005,Emma Davis,nodejs,5,4,backend,7
-W006,Frank Wilson,testing,6,5,qa,6
-W007,Grace Lee,devops,7,6,infrastructure,9
-W008,Henry Garcia,react,8,7,frontend,8
-W009,Irene Martinez,security,9,8,security,10
-W010,Jack Anderson,javascript,10,9,frontend,7
-W011,Karen Taylor,python,4,3,analytics,8
-W012,Luke Thomas,integration,3,2,backend,6
-W013,Maria Rodriguez,research,4,3,research,9
-W014,Nathan Clark,review,5,4,qa,7
-W015,Olivia Lewis,writing,6,5,content,8
-W016,Paul Walker,management,7,6,management,9
-W017,Quinn Hall,training,8,7,training,8
-W018,Rachel Young,javascript,9,8,frontend,7
-W019,Steve King,python,10,9,analytics,8
-W020,Tina Wright,design,3,2,creative,9
-W021,Uma Patel,"python,sql,machine_learning",5,4,analytics,9
-W022,Victor Chen,"javascript,react,redux",6,5,frontend,8
-W023,Wendy Kim,"aws,docker,kubernetes",4,3,infrastructure,8
-W024,Xavier Lopez,"nodejs,api,mongodb",5,4,backend,7
-W025,Yuki Tanaka,"testing,selenium,cypress",6,5,qa,8
-W026,Zara Ahmed,"security,encryption,authentication",4,3,security,10
-W027,Aaron Foster,"blockchain,solidity,web3",3,2,blockchain,9
-W028,Bella Rodriguez,"python,tensorflow,machine_learning",5,4,ai,10
-W029,Carlos Hernandez,"docker,kubernetes,microservices",4,3,infrastructure,8
-W030,Diana Chang,"writing,technical,markdown",6,5,content,7
-W031,Ethan Murphy,"management,leadership,communication",7,6,management,9
-W032,Fiona O'Brien,"monitoring,alerts,devops",5,4,infrastructure,8
-W033,George Patel,"sql,performance,indexing",4,3,database,8
-W034,Hannah Lee,"testing,javascript,selenium",6,5,qa,7
-W035,Ivan Petrov,"performance,jmeter,load_testing",3,2,qa,8
-W036,Julia Santos,"accessibility,wcag,a11y",4,3,frontend,7
-W037,Kevin O'Connor,"i18n,localization,translation",3,2,content,6
-W038,Luna Martinez,"refactoring,architecture,modernization",5,4,backend,9
-W039,Marcus Johnson,"communication,consulting,business",6,5,consulting,8
-W040,Nina Kowalski,"c++,c#,.net",4,3,backend,8
-W041,Oscar Ramirez,"java,spring,hibernate",5,4,backend,7
-W042,Priya Sharma,"cobol,mainframe,migration",2,1,legacy,6
-W043,Quinn Davis,"compliance,gdpr,sox",3,2,compliance,8
-W044,Rita Fernandez,"backup,recovery,continuity",4,3,infrastructure,7
-W045,Samuel Chen,"validation,quality,testing",5,4,qa,8
-W046,Tara Wilson,"中文,unicode,特殊字符",3,2,special,6
-W047,Ulrich Schmidt,"quantum_computing,research",2,1,research,10
-W048,Vera Popovic,"skill1,skill2,skill3,skill4,skill5",6,5,general,7
-W049,William Foster,"edge_skill,rare_skill",1,1,specialized,5
-W050,Xiomara Gutierrez,"spark,hadoop,big_data",4,3,data,8
-DUPLICATE_WORKER,Alice Duplicate,javascript,5,4,frontend,8
-W051,Over Capacity Worker,python,3,8,analytics,7
-W052,Invalid Qualification High,javascript,5,4,frontend,15
-W053,Invalid Qualification Low,python,4,3,analytics,0
-W054,Negative Qualification,javascript,5,4,frontend,-2
-W055,Zero Load Worker,python,5,0,analytics,6
-W056,Negative Load Worker,javascript,4,-1,frontend,7
-W057,Overload vs Slots Worker,python,2,10,analytics,8
-DUPLICATE_WORKER,Another Duplicate Alice,react,6,5,frontend,8
-W058,Empty Skills Worker,,4,3,general,5
-W059,Whitespace Skills Worker,"   ",5,4,general,6
-W060,Malformed Skills Worker,"skill1,,skill2,",4,3,general,7
-W061,Skills With Extra Spaces,"java script, pyt hon",5,4,general,6
-W062,Very Long Worker Name That Exceeds Normal Display Limits And Contains Many Words,javascript,5,4,frontend,8
-W063,Special Chars Worker !@#$%^&*(),python,4,3,analytics,7
-W064,Unicode Worker 中文姓名,中文,3,2,international,8
-W065,JSON-like Skills Worker,"[""skill1"",""skill2""]",4,3,malformed,6
-W066,Quoted Skills Worker,"""quoted_skill"",""another_skill""",5,4,malformed,7
-W067,Trailing Comma Skills,"skill1,skill2,",4,3,malformed,6
-W068,Leading Comma Skills,",skill1,skill2",5,4,malformed,7
-W069,Multiple Commas Skills,"skill1,,,,skill2",4,3,malformed,6
-W070,Only Commas Skills,",,,,",3,2,malformed,5
-W071,Mixed Case Skills Worker,"JavaScript,PYTHON,reAcT",5,4,general,7
-W072,Extreme Slots Worker,javascript,100,90,frontend,8
-W073,Extreme Load Worker,python,10,50,analytics,7
-W074,Decimal Slots Worker,javascript,5.5,4,frontend,8
-W075,Float Load Worker,python,5,4.5,analytics,7
-W076,Very High Qualification,javascript,5,4,frontend,11
-W077,Qualification Boundary Low,python,4,3,analytics,1
-W078,Qualification Boundary High,javascript,5,4,frontend,10
-,Empty WorkerID Worker,javascript,5,4,frontend,8
-W079,Worker with empty group,python,4,3,,7
-W080,,empty_name,javascript,5,4,frontend,8
-W081,Null-like Worker,null,null,null,null,null
-W082,Zero Values Worker,javascript,0,0,frontend,0
-W083,Boundary Test Worker,python,1,1,analytics,1
-W084,High Skill Count Worker,"s1,s2,s3,s4,s5,s6,s7,s8,s9,s10,s11,s12,s13,s14,s15,s16,s17,s18,s19,s20",10,8,polyglot,9
-W085,Single Character Skill,a,2,1,minimal,5
-W086,Numbers in Skills,"skill1,skill2,skill3,999,abc123",4,3,mixed,6
-W087,Special Skill Characters,"c++,c#,.net,node.js,vue.js",5,4,technical,8
-W088,Hyphenated Skills,"full-stack,cross-platform,multi-threading",4,3,hyphenated,7
-W089,Underscored Skills,"machine_learning,data_science,web_development",5,4,underscored,8
-W090,Case Sensitive Skills,"React,REACT,react,ReAcT",3,2,case_test,6
+W001,Sarah Chen,"react,typescript,redux,webpack,testing,css,html",8,6,frontend_lead,9
+W002,Marcus Rodriguez,"python,fastapi,postgresql,redis,docker,kubernetes,microservices",7,5,backend_senior,8
+W003,Emily Zhang,"swift,ios,xcode,core_data,push_notifications,app_store,mobile_testing",6,4,mobile_ios,8
+W004,David Kim,"kotlin,android,jetpack_compose,room_database,firebase,google_play",6,4,mobile_android,7
+W005,Alex Thompson,"golang,kubernetes,docker,terraform,aws,monitoring,prometheus",5,8,devops_senior,9
+W006,Jessica Wu,"react_native,javascript,redux,api_integration,cross_platform,mobile_ui",7,5,mobile_cross_platform,7
+W007,Michael O'Connor,"java,spring_boot,hibernate,postgresql,maven,junit,api_design",6,4,backend_java,8
+W008,Lisa Patel,"python,machine_learning,tensorflow,pandas,scikit_learn,data_analysis",4,6,data_scientist,9
+W009,Robert Johnson,"c++,performance_optimization,memory_management,algorithms,system_programming",3,8,systems_engineer,10
+W010,Anna Kowalski,"figma,adobe_creative,ui_design,prototyping,design_systems,user_research",8,3,ui_designer,8
+W011,James Wilson,"node.js,express,mongodb,websockets,real_time,api_development",7,5,backend_node,7
+W012,Maria Gonzalez,"security_auditing,penetration_testing,cryptography,compliance,risk_assessment",4,7,security_specialist,9
+W013,Kevin Lee,"rust,blockchain,smart_contracts,cryptocurrency,consensus_algorithms",3,6,blockchain_engineer,8
+W014,Rachel Brown,"ruby_on_rails,postgresql,rspec,mvc,api_development,database_design",6,4,backend_ruby,7
+W015,Thomas Anderson,"elasticsearch,search_algorithms,indexing,query_optimization,lucene",5,5,search_engineer,8
+W016,Jennifer Davis,"video_processing,streaming,cdn,encoding,real_time_media,ffmpeg",4,6,media_engineer,8
+W017,Christopher Martinez,"embedded_c,iot,bluetooth,sensor_integration,real_time_systems",5,5,embedded_engineer,7
+W018,Amanda Taylor,"product_management,agile,scrum,roadmapping,stakeholder_management",8,2,product_manager,8
+W019,Daniel Garcia,"react,d3.js,data_visualization,analytics,dashboard_development",7,4,frontend_analytics,7
+W020,Nicole Thompson,"python,django,celery,redis,postgresql,web_scraping,automation",6,5,backend_python,8
+W021,Steven Chang,"c#,unity,game_development,3d_graphics,physics,multiplayer",5,5,game_developer,8
+W022,Melissa Rodriguez,"qa_automation,selenium,cypress,testing_frameworks,api_testing",7,3,qa_automation,7
+W023,Brian Wilson,"aws,cloud_architecture,lambda,s3,rds,cloudformation,cost_optimization",5,6,cloud_architect,9
+W024,Laura Kim,"vue.js,javascript,vuex,nuxt,frontend_development,component_design",7,4,frontend_vue,6
+W025,Jonathan Miller,"c++,computer_vision,opencv,image_processing,machine_learning",4,7,computer_vision,9
+W026,Samantha Davis,"python,data_engineering,airflow,spark,kafka,etl_pipelines,big_data",5,6,data_engineer,8
+W027,Andrew Brown,"golang,grpc,microservices,distributed_systems,messaging,api_gateway",5,5,backend_golang,8
+W028,Michelle Johnson,"flutter,dart,cross_platform,mobile_development,state_management",6,4,mobile_flutter,7
+W029,Ryan Garcia,"solidity,ethereum,defi,web3,smart_contract_security,blockchain",3,6,blockchain_dev,8
+W030,Kelly Martinez,"angular,typescript,rxjs,ngrx,enterprise_applications,testing",6,4,frontend_angular,7
+W031,Patrick O'Brien,"scala,akka,functional_programming,big_data,stream_processing",4,7,backend_scala,9
+W032,Stephanie Lee,"manual_testing,test_planning,bug_reporting,user_acceptance,quality_assurance",8,2,qa_manual,6
+W033,Matthew Chen,"python,nlp,transformers,bert,language_models,ai_research",3,8,ai_researcher,10
+W034,Ashley Wilson,"ux_research,user_interviews,usability_testing,personas,journey_mapping",6,3,ux_researcher,8
+W035,Gregory Davis,"php,laravel,mysql,composer,mvc,web_development,legacy_systems",6,4,backend_php,6
+W036,Christina Taylor,"tensorflow,pytorch,deep_learning,neural_networks,model_deployment",4,7,ml_engineer,9
+W037,Joseph Rodriguez,"lua,redis,nginx,performance_tuning,caching,high_availability",4,6,performance_engineer,8
+W038,Heather Kim,"technical_writing,documentation,api_docs,user_guides,knowledge_management",8,2,technical_writer,7
+W039,Nicholas Martinez,"elixir,phoenix,erlang,distributed_systems,fault_tolerance",3,7,backend_elixir,8
+W040,Jennifer Brown,"salesforce,apex,lightning,crm_development,business_processes",5,4,salesforce_dev,7
+W041,Scott Johnson,"hadoop,hive,spark,big_data,data_warehousing,analytics",4,6,big_data_engineer,8
+W042,Rebecca Garcia,"firebase,real_time_database,cloud_functions,mobile_backend,nosql",6,4,backend_firebase,7
+W043,Justin Wilson,"jenkins,ci_cd,build_automation,deployment_pipelines,version_control",6,5,devops_engineer,7
+W044,Kimberly Davis,"wordpress,php,mysql,cms_development,plugin_development",7,3,cms_developer,6
+W045,Timothy Martinez,"cybersecurity,incident_response,threat_analysis,security_operations",4,7,security_analyst,8
+W046,Angela Thompson,"business_analysis,requirements_gathering,process_improvement,stakeholder_liaison",7,3,business_analyst,7
+W047,Jeremy Chen,"graphql,apollo,api_design,schema_design,resolver_development",5,5,api_specialist,7
+W048,Melissa Kim,"adobe_after_effects,motion_graphics,video_editing,animation,creative_content",6,4,motion_designer,7
+W049,Brandon Rodriguez,"ethereum,solana,polygon,cryptocurrency_exchanges,trading_algorithms",3,7,crypto_engineer,8
+W050,Nicole Wilson,"chatbots,conversational_ai,nlp,dialog_systems,voice_assistants",4,6,ai_conversational,8

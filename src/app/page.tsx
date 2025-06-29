@@ -139,10 +139,10 @@ export default function Home() {
                   <div>
                     <p className="font-medium mb-1">📊 Data Volume:</p>
                     <ul className="text-xs space-y-0.5 ml-2">
-                      <li>• 84 Tasks with diverse categories</li>
-                      <li>• 90 Workers with skill variations</li>
-                      <li>• 74 Clients with complex requirements</li>
-                      <li>• 50+ Business rules with conflicts</li>
+                      <li>• 90 Tasks with diverse categories</li>
+                      <li>• 50 Workers with skill variations</li>
+                      <li>• 30 Clients with complex requirements</li>
+                      <li>• 25 Business rules with conflicts</li>
                     </ul>
                   </div>
                   <div>

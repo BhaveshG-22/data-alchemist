@@ -1,84 +1,91 @@
 TaskID,TaskName,Category,Duration,RequiredSkills,PreferredPhases,MaxConcurrent
-T001,Basic Web Development,development,5,javascript,1,3
-T002,Database Design,database,8,sql,2,2
-T003,UI/UX Design,design,6,design,1,4
-T004,Python Analysis,analytics,4,python,3,2
-T005,Mobile App Development,mobile,10,javascript,2,1
-T006,Data Visualization,analytics,3,python,4,5
-T007,API Development,backend,7,nodejs,3,2
-T008,Quality Assurance,testing,4,testing,5,3
-T009,DevOps Setup,infrastructure,6,devops,1,2
-T010,Machine Learning,ai,12,python,4,1
-T011,Frontend Framework,frontend,8,react,2,3
-T012,Security Audit,security,5,security,5,2
-T013,Performance Optimization,optimization,3,javascript,3,4
-T014,Content Creation,content,2,writing,1,6
-T015,Project Management,management,4,management,2,2
-T016,Complex Integration,integration,15,integration,4,1
-T017,Research Analysis,research,6,research,3,3
-T018,Code Review,review,2,review,5,8
-T019,Documentation,documentation,3,writing,4,5
-T020,Training Session,training,8,training,2,2
-T021,Advanced Analytics,analytics,10,"python,sql,machine_learning",4,2
-T022,Full Stack Development,fullstack,14,"javascript,python,sql",2,1
-T023,Cloud Architecture,cloud,12,"aws,docker,kubernetes",3,1
-T024,Data Engineering,data,9,"python,sql,spark",4,2
-T025,Mobile Testing,testing,3,"testing,mobile",5,4
-T026,API Integration,integration,6,"nodejs,api,json",3,3
-T027,Security Implementation,security,8,"security,encryption,authentication",5,1
-T028,Performance Tuning,optimization,4,"javascript,performance,monitoring",3,2
-T029,User Research,research,5,"research,ux,surveys",1,3
-T030,Technical Writing,documentation,3,"writing,technical,markdown",4,4
-T031,Leadership Training,training,6,"management,leadership,communication",2,2
-T032,System Monitoring,infrastructure,4,"monitoring,alerts,devops",1,3
-T033,Database Optimization,database,7,"sql,performance,indexing",3,2
-T034,Frontend Testing,testing,3,"testing,javascript,selenium",5,5
-T035,Blockchain Development,blockchain,20,"blockchain,solidity,web3",4,1
-T036,AI Model Training,ai,15,"python,tensorflow,machine_learning",4,1
-T037,Microservices Architecture,architecture,12,"docker,kubernetes,microservices",3,1
-T038,Data Validation,validation,2,"python,validation,quality",4,6
-T039,Client Consultation,consulting,4,"communication,consulting,business",1,3
-T040,Code Refactoring,refactoring,5,"javascript,refactoring,clean_code",3,2
-T041,Edge Case Task,edge,1,edge_skill,1,1
-T042,Multi Skill Task,complex,8,"skill1,skill2,skill3,skill4,skill5",2,2
-T043,Rare Skill Task,specialized,6,quantum_computing,3,1
-T044,Legacy System Migration,legacy,18,"cobol,mainframe,migration",4,1
-T045,Compliance Audit,compliance,6,"compliance,gdpr,sox",5,1
-T046,Disaster Recovery,disaster,10,"backup,recovery,continuity",1,1
-T047,Accessibility Implementation,accessibility,4,"accessibility,wcag,a11y",2,3
-T048,Internationalization,i18n,5,"i18n,localization,translation",3,2
-T049,Load Testing,load_testing,3,"performance,jmeter,load_testing",5,4
-T050,Technical Debt Reduction,tech_debt,12,"refactoring,architecture,modernization",3,1
-DUPLICATE_TASK_ID,Duplicate Task A,test,5,testing,1,1
-T051,Empty Skills Task,test,3,,1,1
-T052,Invalid Duration Task,test,0,javascript,1,1
-T053,Negative Duration Task,test,-5,python,1,1
-T054,Overrange Duration Task,test,999,javascript,1,1
-T055,Invalid MaxConcurrent Task,test,5,python,1,0
-T056,Negative MaxConcurrent Task,test,5,javascript,1,-3
-T057,Overrange MaxConcurrent Task,test,5,python,1,150
-DUPLICATE_TASK_ID,Duplicate Task B,test,3,javascript,2,1
-T058,Whitespace Only Skills,test,5,"   ",1,1
-T059,Malformed Skills List,test,4,"skill1,,skill2,",1,1
-T060,Skills With Spaces,test,6,"java script, pyt hon, no de js",2,2
-T061,Very Long Task Name That Exceeds Normal Limits And Contains Many Words To Test Display,edge,3,javascript,1,1
-T062,Special Characters Task !@#$%^&*(),special,2,"c++,c#,.net",3,1
-T063,Unicode Task Name 中文任务,unicode,4,"中文,unicode,特殊字符",1,1
-T064,JSON-like Skills,malformed,3,"[""skill1"",""skill2""]",2,1
-T065,Quoted Skills,malformed,4,"""quoted_skill"",""another_skill""",1,1
-T066,Comma at End Task,malformed,3,"skill1,skill2,",1,1
-T067,Comma at Start Task,malformed,3,",skill1,skill2",1,1
-T068,Multiple Commas Task,malformed,3,"skill1,,,,skill2",1,1
-T069,Only Commas Task,malformed,3,",,,,",1,1
-T070,Mixed Case Skills,case,3,"JavaScript,PYTHON,reAcT",1,1
-T071,Number Skills Task,numbers,3,"skill1,skill2,skill3,skill4,skill5,skill6,skill7,skill8,skill9,skill10",1,1
-T072,Extreme Duration Task,extreme,1000,javascript,1,1
-T073,Extreme Concurrent Task,extreme,5,python,1,999
-T074,Decimal Duration Task,decimal,5.5,javascript,1,1
-T075,Float Concurrent Task,float,5,python,1,2.5
-,Empty TaskID Task,empty,3,javascript,1,1
-T076,Task with empty category,,4,python,1,1
-T077,,empty_name,3,javascript,1,1
-T078,Null-like values,null,null,null,null,null
-T079,Zero Values Task,zero,0,javascript,0,0
-T080,Boundary Test Task,boundary,1,javascript,1,1
+T001,React Video Streaming Frontend,frontend,8,"react,typescript,video_streaming,webpack,redux",[1,2],3
+T002,Microservices Audio Processing,backend,12,"python,fastapi,kafka,redis,audio_processing",[1,3],2
+T003,Real-time Booking System API,backend,10,"node.js,express,websockets,mongodb,redis",[2,3],2
+T004,Mobile Delivery Tracking,mobile,14,"react_native,geolocation,push_notifications,maps_api",[1,2,3],2
+T005,Video Conferencing Backend,backend,16,"golang,webrtc,kubernetes,microservices,scalability",[2,3],1
+T006,E-commerce Payment Integration,backend,6,"ruby_on_rails,stripe_api,webhooks,security,encryption",[2],3
+T007,Slack Bot Automation Framework,automation,4,"python,slack_api,nlp,lambda,serverless",[1,2],2
+T008,Cryptocurrency Trading Engine,fintech,20,"rust,high_frequency_trading,websockets,database_optimization",[2,3,4],1
+T009,Stock Trading Mobile App,mobile,12,"swift,ios,real_time_data,charts,biometric_auth",[1,2,3],2
+T010,POS Terminal Integration,hardware,8,"embedded_c,payment_processing,nfc,bluetooth,security",[2,3],2
+T011,Fitness Content Streaming,streaming,10,"react,video_optimization,cdn,analytics,social_features",[1,2],2
+T012,Netflix Recommendation Engine,machine_learning,15,"python,tensorflow,collaborative_filtering,big_data,spark",[2,3],1
+T013,Peloton Social Features,social,6,"react_native,real_time_messaging,gamification,social_graph",[1,2],2
+T014,Zoom Security Enhancements,security,8,"c++,encryption,penetration_testing,compliance,audit",[2,3],1
+T015,Spotify Playlist Algorithm,machine_learning,12,"python,machine_learning,audio_analysis,recommendation_systems",[2,3],1
+T016,Slack Enterprise Dashboard,frontend,7,"react,d3.js,data_visualization,enterprise_ui,analytics",[1,2],2
+T017,Airbnb Search Optimization,search,9,"elasticsearch,python,geospatial,ranking_algorithms,caching",[2,3],2
+T018,Shopify Plugin Architecture,platform,11,"javascript,plugin_system,api_design,webhook_system",[1,2,3],2
+T019,DoorDash Route Optimization,algorithms,13,"python,optimization_algorithms,maps_api,machine_learning,logistics",[2,3],1
+T020,Coinbase Security Audit,security,5,"security_auditing,penetration_testing,blockchain,smart_contracts",[3],1
+T021,Robinhood Options Trading,fintech,16,"java,financial_modeling,real_time_trading,risk_management",[2,3,4],1
+T022,Square Hardware SDK,sdk,9,"c,embedded_systems,bluetooth,nfc,payment_protocols",[2,3],2
+T023,Netflix Content CDN,infrastructure,12,"cdn_optimization,video_encoding,global_distribution,caching",[2,3],1
+T024,Slack Workflow Builder,automation,8,"typescript,workflow_engine,drag_drop,visual_programming",[1,2],2
+T025,DoorDash Driver Mobile App,mobile,11,"react_native,gps_tracking,offline_capability,notifications",[1,2,3],2
+T026,Robinhood Crypto Wallet,fintech,14,"blockchain,cryptocurrency,wallet_security,key_management",[2,3,4],1
+T027,Peloton Hardware Integration,iot,10,"embedded_c,bluetooth_le,sensor_integration,real_time_data",[2,3],1
+T028,Spotify Audio Quality Engine,audio,13,"c++,audio_processing,compression,real_time_streaming",[2,3],1
+T029,Zoom Cloud Recording,cloud,9,"golang,video_processing,cloud_storage,transcription,ai",[2,3],2
+T030,Square Analytics Dashboard,analytics,7,"python,data_visualization,business_intelligence,sql,etl",[1,2],2
+T031,Airbnb Dynamic Pricing,machine_learning,11,"python,pricing_algorithms,machine_learning,market_analysis",[2,3],1
+T032,Shopify Inventory Management,erp,8,"ruby_on_rails,inventory_algorithms,forecasting,automation",[1,2,3],2
+T033,Coinbase Institutional API,api,12,"golang,institutional_trading,api_design,rate_limiting,compliance",[2,3],1
+T034,Duolingo Speech Recognition,ai,15,"python,speech_recognition,natural_language_processing,tensorflow",[2,3,4],1
+T035,Duolingo Gamification Engine,gamification,6,"javascript,game_mechanics,user_engagement,analytics",[1,2],2
+T036,Duolingo Mobile Offline Mode,mobile,9,"react_native,offline_storage,synchronization,progressive_web_app",[1,2,3],2
+T037,Canva Template Generator AI,ai,14,"python,computer_vision,design_automation,machine_learning",[2,3,4],1
+T038,Canva Real-time Collaboration,collaboration,10,"websockets,operational_transform,conflict_resolution,real_time_sync",[2,3],2
+T039,Canva Brand Kit Management,branding,5,"react,brand_management,asset_organization,design_systems",[1,2],2
+T040,Notion Database Engine,database,16,"rust,database_engine,query_optimization,indexing,performance",[2,3,4],1
+T041,Notion Block Editor,editor,12,"typescript,rich_text_editor,collaborative_editing,undo_redo",[1,2,3],2
+T042,Notion API Platform,api,8,"node.js,rest_api,rate_limiting,webhook_system,documentation",[2,3],2
+T043,Figma Vector Graphics Engine,graphics,18,"c++,vector_graphics,rendering_engine,performance_optimization",[2,3,4],1
+T044,Figma Plugin Ecosystem,platform,7,"javascript,plugin_architecture,sandboxing,api_design",[1,2],2
+T045,Figma Design System Manager,design_systems,6,"typescript,design_tokens,component_library,version_control",[1,2],2
+T046,Stripe Global Payment Rails,payments,20,"java,payment_processing,international_compliance,fraud_detection",[2,3,4],1
+T047,Stripe Machine Learning Fraud,machine_learning,13,"python,fraud_detection,anomaly_detection,real_time_scoring",[2,3],1
+T048,Stripe Developer Dashboard,developer_tools,8,"react,developer_experience,api_documentation,testing_tools",[1,2],2
+T049,GitLab CI/CD Pipeline Engine,devops,15,"golang,container_orchestration,pipeline_automation,kubernetes",[2,3,4],1
+T050,GitLab Security Scanning,security,10,"python,vulnerability_scanning,sast,dast,container_security",[2,3],2
+T051,GitLab Package Registry,package_management,9,"ruby,package_management,artifact_storage,dependency_resolution",[2,3],2
+T052,MongoDB Sharding Architecture,database,17,"c++,distributed_systems,sharding,replication,consistency",[2,3,4],1
+T053,MongoDB Query Optimizer,database,11,"c++,query_optimization,indexing,performance_tuning",[2,3],1
+T054,MongoDB Atlas Cloud Platform,cloud,12,"javascript,cloud_infrastructure,monitoring,automation,scaling",[2,3],2
+T055,Twilio Voice Recognition API,voice,14,"python,speech_to_text,natural_language_processing,real_time_audio",[2,3,4],1
+T056,Twilio SMS Global Gateway,communications,10,"java,sms_protocols,international_routing,carrier_integration",[2,3],2
+T057,Twilio Video Conferencing SDK,sdk,13,"c++,webrtc,video_processing,cross_platform,mobile_sdk",[2,3,4],1
+T058,Datadog Metrics Ingestion,observability,12,"golang,time_series_database,high_throughput,real_time_processing",[2,3],1
+T059,Datadog AI Anomaly Detection,machine_learning,15,"python,anomaly_detection,time_series_analysis,alerting",[2,3,4],1
+T060,Datadog Mobile APM,mobile,8,"swift,kotlin,mobile_monitoring,crash_reporting,performance",[1,2,3],2
+T061,Jira Agile Planning Engine,project_management,9,"java,agile_methodologies,sprint_planning,burndown_charts",[1,2,3],2
+T062,Confluence Knowledge Graph,knowledge_management,11,"python,graph_databases,search_algorithms,content_recommendations",[2,3],2
+T063,Bitbucket Git Hosting Platform,version_control,13,"java,git_protocols,distributed_version_control,code_review",[2,3,4],1
+T064,Okta Identity Verification,identity,16,"java,identity_protocols,saml,oauth,multi_factor_authentication",[2,3,4],1
+T065,Okta Zero Trust Architecture,security,12,"security_architecture,zero_trust,policy_engine,risk_assessment",[2,3],1
+T066,Okta Mobile Identity SDK,mobile,7,"swift,kotlin,biometric_authentication,secure_storage",[1,2,3],2
+T067,PagerDuty Incident Intelligence,incident_management,10,"python,machine_learning,incident_analysis,automation",[2,3],1
+T068,PagerDuty Mobile Response App,mobile,6,"react_native,push_notifications,offline_capability,on_call_management",[1,2,3],2
+T069,PagerDuty Workflow Automation,automation,8,"python,workflow_engine,integrations,event_processing",[2,3],2
+T070,Elasticsearch Query Engine,search,14,"java,search_algorithms,distributed_computing,relevance_scoring",[2,3,4],1
+T071,Elasticsearch Machine Learning,machine_learning,12,"python,unsupervised_learning,anomaly_detection,clustering",[2,3],1
+T072,Kibana Visualization Engine,visualization,9,"javascript,data_visualization,real_time_dashboards,interactive_charts",[1,2,3],2
+T073,Snowflake Query Optimizer,database,18,"c++,sql_optimization,distributed_query_processing,cost_based_optimizer",[2,3,4],1
+T074,Snowflake Data Sharing Platform,data_sharing,10,"python,data_governance,privacy_preserving,secure_sharing",[2,3],2
+T075,Snowflake Machine Learning Studio,machine_learning,13,"python,automl,feature_engineering,model_deployment",[2,3,4],1
+T076,Unity Rendering Pipeline,graphics,16,"c++,graphics_rendering,shader_programming,performance_optimization",[2,3,4],1
+T077,Unity Multiplayer Networking,networking,11,"c#,multiplayer_networking,lag_compensation,server_architecture",[2,3],2
+T078,Unity AR/VR Framework,ar_vr,14,"c#,augmented_reality,virtual_reality,spatial_computing",[2,3,4],1
+T079,Fortnite Battle Royale Engine,gaming,22,"c++,game_engine,multiplayer_architecture,real_time_synchronization",[2,3,4,5],1
+T080,Fortnite Creative Mode Tools,game_tools,8,"c#,level_editor,user_generated_content,scripting_system",[1,2,3],2
+T081,Fortnite Anti-Cheat System,security,12,"c++,anti_cheat,behavioral_analysis,machine_learning,security",[2,3,4],1
+T082,Roblox Physics Engine,physics,15,"c++,physics_simulation,collision_detection,performance_optimization",[2,3,4],1
+T083,Roblox Scripting Platform,scripting,10,"lua,scripting_engine,sandboxing,performance_monitoring",[2,3],2
+T084,Roblox Virtual Economy,economy,13,"python,virtual_economy,marketplace,fraud_prevention,analytics",[2,3,4],1
+T085,Coursera Video Streaming,streaming,11,"javascript,video_streaming,adaptive_bitrate,cdn_optimization",[1,2,3],2
+T086,Coursera Assessment Engine,assessment,9,"python,automated_grading,plagiarism_detection,adaptive_testing",[2,3],2
+T087,Coursera Mobile Learning App,mobile,12,"react_native,offline_learning,progress_tracking,video_download",[1,2,3],2
+T088,Udemy Course Creation Tools,content_creation,7,"react,video_editor,course_builder,content_management",[1,2],2
+T089,Udemy Recommendation System,machine_learning,10,"python,collaborative_filtering,content_recommendation,personalization",[2,3],1
+T090,Udemy Mobile Offline Learning,mobile,8,"kotlin,swift,offline_storage,video_compression,sync",[1,2,3],2
