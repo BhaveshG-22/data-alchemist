@@ -1905,7 +1905,7 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
               validationIssues={validationIssues}
               disabled={!parsedData.clients && !parsedData.workers && !parsedData.tasks}
             />
-            <button
+            {/* <button
               onClick={onProceed}
               disabled={validationIssues.some(issue => issue.type === 'error')}
               className={`px-6 py-2 rounded-lg font-medium transition-colors ${validationIssues.some(issue => issue.type === 'error')
@@ -1914,7 +1914,7 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
                 }`}
             >
               Proceed to Analysis
-            </button>
+            </button> */}
           </div>
         </div>
       </div>

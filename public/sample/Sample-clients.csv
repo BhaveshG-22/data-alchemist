@@ -29,7 +29,7 @@ C027,PerformanceMax,3,"T049,T028,T013",performance,"{""budget"": 50000, ""load_r
 C028,TechDebtSolver,2,"T050,T040,T038",refactoring,"{""budget"": 35000, ""code_quality"": ""high"", ""maintainability"": true}"
 C029,EdgeCaseClient,1,"T041,T043,T047",edge_cases,"{""budget"": 25000, ""unusual_requirements"": true, ""experimental"": true}"
 C030,MultiSkillDemand,5,"T042,T022,T037",complex,"{""budget"": 150000, ""skill_diversity"": true, ""cross_functional"": true}"
-DUPLICATE_CLIENT,Duplicate Corp A,3,"T001,T002",test,"{""budget"": 10000, ""duplicate"": true}"
+C777,Duplicate Corp A,3,"T001,T002",test,"{""budget"": 10000, ""duplicate"": true}"
 C031,Invalid Priority Client High,10,"T001,T002",enterprise,"{""budget"": 50000, ""invalid"": true}"
 C032,Invalid Priority Client Zero,0,"T003,T004",startup,"{""budget"": 20000, ""invalid"": true}"
 C033,Negative Priority Client,-1,"T005,T006",small,"{""budget"": 15000, ""invalid"": true}"
@@ -38,7 +38,7 @@ C035,Nonexistent Task Client,3,"T999,T888,T777",enterprise,"{""budget"": 60000, 
 C036,Invalid JSON Client,4,"T001,T002",enterprise,"{invalid json structure without closing brace"
 C037,Empty Tasks Client,3,"",startup,"{""budget"": 25000, ""no_tasks"": true}"
 C038,Malformed Tasks Client,4,"T001,,T002,",enterprise,"{""budget"": 40000, ""malformed_list"": true}"
-DUPLICATE_CLIENT,Duplicate Corp B,2,"T007,T008",test,"{""budget"": 20000, ""duplicate"": true}"
+C777,Duplicate Corp B,2,"T007,T008",test,"{""budget"": 20000, ""duplicate"": true}"
 C039,Missing JSON Client,3,"T011,T012",startup,
 C040,Empty JSON Client,4,"T013,T014",enterprise,""
 C041,Null JSON Client,5,"T015,T016",enterprise,null

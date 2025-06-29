@@ -147,11 +147,11 @@ export default function ExportButton({
 
   return (
     <div className="relative group">
-      <div className="flex items-center space-x-0">
+      <div className="flex items-center border border-transparent rounded-lg overflow-hidden">
         <button
           onClick={handleExport}
           disabled={isDisabled}
-          className={`flex items-center justify-center px-4 py-2 rounded-l-lg font-medium transition-colors ${
+          className={`flex items-center justify-center px-4 py-2 font-medium transition-colors relative ${
             isDisabled
               ? 'bg-gray-400 text-white cursor-not-allowed'
               : 'bg-green-600 text-white hover:bg-green-700 focus:ring-2 focus:ring-green-300'
@@ -178,7 +178,7 @@ export default function ExportButton({
         <button
           onClick={() => setShowDropdown(!showDropdown)}
           disabled={isDisabled}
-          className={`flex items-center justify-center px-2 py-2 rounded-r-lg border-l ${isDisabled ? 'border-gray-500' : 'border-green-700'} font-medium transition-colors ${
+          className={`flex items-center justify-center px-3 py-2 border-l ${isDisabled ? 'border-gray-500' : 'border-green-700'} font-medium transition-colors relative ${
             isDisabled
               ? 'bg-gray-400 text-white cursor-not-allowed'
               : 'bg-green-600 text-white hover:bg-green-700 focus:ring-2 focus:ring-green-300'
@@ -264,7 +264,7 @@ export default function ExportButton({
       
       {/* Tooltip for disabled state */}
       {isDisabled && (
-        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50">
+        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-[60]">
           {getDisabledReason()}
           <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
         </div>

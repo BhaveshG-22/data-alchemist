@@ -1,13 +1,33 @@
 ClientID,ClientName,PriorityLevel,RequestedTaskIDs,GroupTag,AttributesJSON
-C001,TechStart Inc,3,"T001,T002",startup,"{""budget"": 50000, ""deadline"": ""2024-06-30""}"
-C002,BigCorp Enterprise,5,"T003,T004,T005",enterprise,"{""budget"": 200000, ""deadline"": ""2024-12-31""}"
-C003,LocalShop,2,T006,small,"{""budget"": 15000, ""deadline"": ""2024-05-15""}"
-C004,GreenTech Solutions,4,"T007,T008",energy,"{""budget"": 80000, ""deadline"": ""2024-08-20""}"
-C005,DataFirm Analytics,5,"T009,T010",analytics,"{""budget"": 120000, ""deadline"": ""2024-10-10""}"
-DUPLICATE_CLIENT,TechStart Inc,3,T001,startup,"{""budget"": 10000, ""deadline"": ""2024-04-01""}"
-C006,HighPriority Corp,10,"T002,T003",enterprise,"{""budget"": 100000, ""deadline"": ""2024-07-01""}"
-C007,MissingTasks Ltd,4,"T999,T888",startup,"{""budget"": 30000, ""deadline"": ""2024-09-15""}"
-DUPLICATE_CLIENT,DataFirm Analytics,2,T003,analytics,"{""budget"": 20000, ""deadline"": ""2024-05-01""}"
-C008,BadJSON Corp,3,T004,enterprise,"{invalid json missing closing brace"
-C009,EmptyTasks Inc,4,"",startup,"{""budget"": 25000, ""deadline"": ""2024-06-01""}"
-C010,ValidClient Corp,3,"T005,T006",enterprise,"{""budget"": 75000, ""deadline"": ""2024-11-30""}"
+C001,Acme Inc,3,T001,TAG1,{"budget":10000}
+C002,Globex Corp,5,T002,TAG2,{"sla":"24h"}
+C003,Initech,2,T003,TAG1,{"note":"urgent"}
+C004,Umbrella LLC,4,T004,TAG2,{"vip":true}
+C005,Hooli,1,T005,TAG3,{"project":"apollo"}
+C006,Stark Industries,3,T006,TAG1,{"location":"NY"}
+C007,Wayne Tech,2,T007,TAG2,{"region":"east"}
+C008,Vandelay Ltd,4,T008,TAG3,{"sla":"12h"}
+C009,Wonka Inc,2,T009,TAG1,{"notes":"QA needed"}
+C010,Soylent Corp,1,T010,TAG2,{"priority":"high"}
+C011,Nakatomi,5,T011,TAG3,{"scope":"mvp"}
+C012,Tyrell Systems,3,T012,TAG1,{"vip":false}
+C013,Zorg Corp,2,T013,TAG2,{"team":"backend"}
+C014,Rapture LLC,4,T014,TAG3,{"region":"us-west"}
+C015,Paper Co,1,T015,TAG1,{"department":"dev"}
+C016,Pied Piper,3,T016,TAG2,{"stage":"beta"}
+C017,Bluth Company,2,T017,TAG3,{"comment":"slow"}
+C018,Planet Express,3,T018,TAG1,{"delivery":"code"}
+C019,Spacely Inc,5,T019,TAG2,{"timezone":"PST"}
+C020,Daily Bugle,4,T020,TAG3,{"rush":true}
+C021,Dunder Mifflin,2,T021,TAG1,{"paperwork":true}
+C022,Massive Dynamic,1,T022,TAG2,{"status":"on-hold"}
+C023,Oceanic Airlines,4,T023,TAG3,{"passengers":300}
+C024,Black Mesa,2,T024,TAG1,{"warning":"red"}
+C025,Aperture Science,3,T025,TAG2,{"experiment":"new"}
+C026,Tyco Systems,2,T026,TAG3,{"audit":true}
+C027,Vought,1,T027,TAG1,{"note":"prod only"}
+C028,Weyland Corp,3,T028,TAG2,{"cycle":"Q4"}
+C029,Skynet,5,T029,TAG3,{"danger":"very"}
+C030,OCP,2,T030,TAG1,{"mode":"maintenance"}
+C031,HexTech,4,T031,TAG2,{"power":"high"}
+C032,Digicorp,3,T032,TAG3,{"region":"latam"}
