@@ -347,7 +347,32 @@ Output: { "type": "slotRestriction", "group": "Marketing", "minCommonSlots": 2 }
 Input: "T1 must run before T2"
 Output: { "type": "precedence", "before": "T1", "after": "T2" }
 
-Respond with only the JSON object:`
+Respond with only the JSON object:`,
+
+  generate_rule_examples: `You are an assistant that generates realistic example natural language instructions for business rules based on actual data context.
+
+Available Data Context:
+- Sample Tasks: {taskSample} (Total: {taskCount} tasks)
+- Sample Client Groups: {clientGroupSample} (Total: {clientGroupCount} groups)  
+- Sample Worker Groups: {workerGroupSample} (Total: {workerGroupCount} groups)
+
+Generate 5 realistic natural language rule examples that users could type, using the ACTUAL task IDs and group names from the data above.
+
+Requirements:
+1. Use real task IDs and group names from the provided samples
+2. Mix different rule types: co-run, load limits, phase windows, slot restrictions
+3. Keep examples conversational and natural
+4. Each example should be 6-15 words
+5. Examples should be practical for resource allocation scenarios
+
+Example format:
+Make [actual_task_id] and [actual_task_id] run together
+Limit [actual_group_name] to 3 tasks per phase
+Task [actual_task_id] can only run in phase 2 and 4
+[actual_group_name] workers need at least 2 common slots
+[actual_task_id] must run before [actual_task_id]
+
+Generate 5 examples using the actual data provided:`
 };
 
 // File type context for better suggestions
@@ -425,6 +450,36 @@ export async function POST(request: NextRequest) {
         availableTasks: context?.availableTasks ? context.availableTasks.join(', ') : 'T001, T002, T003, T004, T005',
         availableClientGroups: context?.availableClientGroups ? context.availableClientGroups.join(', ') : 'GroupA, GroupB, Marketing',
         availableWorkerGroups: context?.availableWorkerGroups ? context.availableWorkerGroups.join(', ') : 'Backend, Frontend, QA'
+      };
+
+      // Process template
+      let processedTemplate = promptTemplate;
+      Object.entries(promptVariables).forEach(([varName, value]) => {
+        processedTemplate = processedTemplate.replace(new RegExp(`\\{${varName}\\}`, 'g'), value);
+      });
+
+      const response = await llm.invoke(processedTemplate);
+
+      return NextResponse.json({
+        suggestion: response.content || response,
+        issueType: category,
+        query: query,
+      });
+    }
+
+    // Handle example generation requests
+    if (category === 'generate_rule_examples' && context) {
+      const templateKey = 'generate_rule_examples';
+      const promptTemplate = PROMPT_TEMPLATES[templateKey];
+
+      // Create prompt variables for example generation
+      const promptVariables: Record<string, string> = {
+        taskSample: context.taskSample || 'T001, T002, T003',
+        clientGroupSample: context.clientGroupSample || 'GroupA, GroupB',
+        workerGroupSample: context.workerGroupSample || 'Backend, Frontend', 
+        taskCount: String(context.taskCount || 0),
+        clientGroupCount: String(context.clientGroupCount || 0),
+        workerGroupCount: String(context.workerGroupCount || 0)
       };
 
       // Process template

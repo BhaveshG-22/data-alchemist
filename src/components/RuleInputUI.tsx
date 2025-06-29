@@ -7,6 +7,7 @@ import { BusinessRule } from '@/validators/types';
 import NLRuleInput from './NLRuleInput';
 import { useToast } from '@/hooks/useToast';
 import ToastContainer from './ToastContainer';
+import { PrioritizationConfig } from '@/config/prioritizationCriteria';
 
 interface RuleInputUIProps {
   rules: BusinessRule[];
@@ -14,6 +15,7 @@ interface RuleInputUIProps {
   availableTasks: string[];
   availableClientGroups?: string[];
   availableWorkerGroups?: string[];
+  prioritizationConfig?: PrioritizationConfig;
 }
 
 interface RuleFormData {
@@ -55,7 +57,8 @@ export default function RuleInputUI({
   onRulesChange, 
   availableTasks,
   availableClientGroups = [],
-  availableWorkerGroups = []
+  availableWorkerGroups = [],
+  prioritizationConfig
 }: RuleInputUIProps) {
   const [isAddingRule, setIsAddingRule] = useState(false);
   const [editingRule, setEditingRule] = useState<string | null>(null);
@@ -429,7 +432,7 @@ export default function RuleInputUI({
       precedenceOverride: 'Precedence override'
     };
     
-    showSuccess(`✅ Rule added: ${ruleTypeDisplay[rule.type]} rule created successfully!`);
+    showSuccess(`Rule added: ${ruleTypeDisplay[rule.type]} rule created successfully!`);
   };
 
   const handleGenerateRulesConfig = () => {
@@ -494,7 +497,8 @@ export default function RuleInputUI({
     const rulesConfig = {
       version: "1.0",
       generated: new Date().toISOString(),
-      rules: cleanRules
+      rules: cleanRules,
+      ...(prioritizationConfig && { prioritization: prioritizationConfig })
     };
 
     // Create and download the file
@@ -509,7 +513,8 @@ export default function RuleInputUI({
     URL.revokeObjectURL(url);
 
     // Show success message
-    showSuccess(`Rules exported successfully! ${cleanRules.length} active rules saved to rules.json`);
+    const hasPrioritization = prioritizationConfig ? " with prioritization config" : "";
+    showSuccess(`Rules exported successfully! ${cleanRules.length} active rules${hasPrioritization} saved to rules.json`);
   };
 
   const renderFormFields = () => {

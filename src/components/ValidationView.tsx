@@ -6,6 +6,8 @@ import IssuesSidebar from './IssuesSidebar';
 import RuleInputUI from './RuleInputUI';
 import NaturalLanguageQuery from './NaturalLanguageQuery';
 import FilteredDataView from './FilteredDataView';
+import PrioritizationWeights from './PrioritizationWeights';
+import ExportButton from './ExportButton';
 // import ValidationSummary from './ValidationSummary';
 import { parseFile, ParsedData } from '@/utils/fileParser';
 import {
@@ -19,6 +21,7 @@ import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import Drawer from 'react-modern-drawer';
 import 'react-modern-drawer/dist/index.css';
+import { PrioritizationConfig, DEFAULT_PRIORITIZATION_CONFIG } from '@/config/prioritizationCriteria';
 
 interface QueryResult {
   query: string;
@@ -125,6 +128,8 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
   }, []);
   const [businessRules, setBusinessRules] = useState<BusinessRule[]>([]);
   const [showRuleDrawer, setShowRuleDrawer] = useState(false);
+  const [prioritizationConfig, setPrioritizationConfig] = useState<PrioritizationConfig>(DEFAULT_PRIORITIZATION_CONFIG);
+  const [showPrioritizationDrawer, setShowPrioritizationDrawer] = useState(false);
   const [showColumnMappingDialog, setShowColumnMappingDialog] = useState(false);
   const [queryResult, setQueryResult] = useState<QueryResult | null>(null);
   const [showFilteredData, setShowFilteredData] = useState(false);
@@ -1491,6 +1496,11 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
     // Note: Validation will be triggered automatically by the useEffect above
   }, []);
 
+  // Handle prioritization config changes
+  const handlePrioritizationConfigChange = useCallback((config: PrioritizationConfig) => {
+    setPrioritizationConfig(config);
+  }, []);
+
   // Get available task IDs from parsed data
   const getAvailableTaskIds = useCallback((): string[] => {
     if (!parsedData.tasks || !parsedData.tasks.headers.includes('TaskID')) {
@@ -1600,7 +1610,7 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
           </div>
 
           <div className="mt-4 text-xs text-gray-500">
-            LLM is analyzing your data for optimal column mapping
+          ✨ LLM is analyzing your data for optimal column mapping
           </div>
         </div>
       </div>
@@ -1854,6 +1864,23 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
           </div>
           <div className="flex items-center space-x-3">
             <button
+              onClick={() => setShowPrioritizationDrawer(!showPrioritizationDrawer)}
+              className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2 ${showPrioritizationDrawer
+                ? 'bg-blue-600 text-white hover:bg-blue-700'
+                : 'bg-white text-blue-600 border border-blue-600 hover:bg-blue-50'
+                }`}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h13M3 8h9m-9 4h9m5-4v12m0 0l-4-4m4 4l4-4" />
+              </svg>
+              <span>Prioritization</span>
+              {prioritizationConfig.presetUsed && (
+                <span className="bg-white text-blue-600 px-2 py-0.5 rounded-full text-xs font-bold">
+                  {prioritizationConfig.presetUsed}
+                </span>
+              )}
+            </button>
+            <button
               onClick={() => setShowRuleDrawer(!showRuleDrawer)}
               className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2 ${showRuleDrawer
                 ? 'bg-purple-600 text-white hover:bg-purple-700'
@@ -1870,6 +1897,13 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
                 </span>
               )}
             </button>
+            <ExportButton
+              parsedData={parsedData}
+              businessRules={businessRules}
+              prioritizationConfig={prioritizationConfig}
+              validationIssues={validationIssues}
+              disabled={!parsedData.clients && !parsedData.workers && !parsedData.tasks}
+            />
             <button
               onClick={onProceed}
               disabled={validationIssues.some(issue => issue.type === 'error')}
@@ -1980,6 +2014,49 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
               availableTasks={getAvailableTaskIds()}
               availableClientGroups={getAvailableClientGroups()}
               availableWorkerGroups={getAvailableWorkerGroups()}
+              prioritizationConfig={prioritizationConfig}
+            />
+          </div>
+        </div>
+      </Drawer>
+
+      {/* Prioritization Drawer */}
+      <Drawer
+        open={showPrioritizationDrawer}
+        onClose={() => setShowPrioritizationDrawer(false)}
+        direction="bottom"
+        className="!h-[85vh]"
+        style={{ height: '85vh' }}
+      >
+        <div className="flex flex-col h-full bg-white">
+          {/* Drawer Header */}
+          <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-blue-50">
+            <div className="flex items-center space-x-3">
+              <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h13M3 8h9m-9 4h9m5-4v12m0 0l-4-4m4 4l4-4" />
+                </svg>
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">Prioritization & Weights</h2>
+                <p className="text-sm text-gray-600">Configure resource allocation priorities</p>
+              </div>
+            </div>
+            <button
+              onClick={() => setShowPrioritizationDrawer(false)}
+              className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          {/* Drawer Content */}
+          <div className="flex-1 overflow-y-auto p-6">
+            <PrioritizationWeights
+              onConfigChange={handlePrioritizationConfigChange}
+              initialConfig={prioritizationConfig}
             />
           </div>
         </div>

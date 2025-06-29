@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { BusinessRule } from '@/validators/types';
 import { validateNLGeneratedRule, NLRuleValidationResult } from '@/validators/validateNLRules';
 
@@ -24,14 +24,79 @@ export default function NLRuleInput({
   const [lastResult, setLastResult] = useState<{ rule: BusinessRule; input: string; validation: NLRuleValidationResult } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showPreview, setShowPreview] = useState(false);
-
-  const exampleInputs = [
+  const [exampleInputs, setExampleInputs] = useState<string[]>([
     "Make T005 and T006 run together",
-    "Limit GroupB to 2 tasks per phase",
+    "Limit GroupB to 2 tasks per phase", 
     "Task T8 can only run in phase 1 and 3",
     "Tasks in Marketing group need at least 2 common slots",
     "Backend workers should have max 3 tasks per phase"
-  ];
+  ]);
+  const [loadingExamples, setLoadingExamples] = useState(false);
+
+  const generateContextualExamples = useCallback(async () => {
+    if (loadingExamples) return;
+    
+    setLoadingExamples(true);
+    try {
+      // Create context summary for the LLM
+      const context = {
+        taskSample: availableTasks.slice(0, 8).join(', ') || 'T001, T002, T003',
+        clientGroupSample: availableClientGroups.slice(0, 5).join(', ') || 'GroupA, GroupB',
+        workerGroupSample: availableWorkerGroups.slice(0, 5).join(', ') || 'Backend, Frontend',
+        taskCount: availableTasks.length,
+        clientGroupCount: availableClientGroups.length,
+        workerGroupCount: availableWorkerGroups.length
+      };
+
+      const response = await fetch('/api/ai-fix', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          query: 'Generate contextual examples',
+          category: 'generate_rule_examples',
+          context: context
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate examples');
+      }
+
+      const result = await response.json();
+      let examplesText = result.suggestion || '';
+
+      // Parse the examples from the AI response
+      const lines = examplesText.split('\n').filter((line: string) => {
+        const trimmed = line.trim();
+        return trimmed && 
+               !trimmed.startsWith('#') && 
+               !trimmed.startsWith('*') &&
+               !trimmed.includes('Example') &&
+               !trimmed.includes('Here are') &&
+               trimmed.length > 20 && // Reasonable example length
+               trimmed.length < 100; // Not too long
+      });
+
+      if (lines.length >= 3) {
+        const cleanExamples = lines.slice(0, 5).map((line: string) => 
+          line.replace(/^\d+\.\s*/, '').replace(/^[-•]\s*/, '').trim()
+        );
+        setExampleInputs(cleanExamples);
+      }
+    } catch (error) {
+      console.error('Failed to generate contextual examples:', error);
+      // Keep default examples on error
+    } finally {
+      setLoadingExamples(false);
+    }
+  }, [availableTasks, availableClientGroups, availableWorkerGroups, loadingExamples]);
+
+  // Generate contextual examples when data becomes available
+  useEffect(() => {
+    if (availableTasks.length > 0 && !loadingExamples) {
+      generateContextualExamples();
+    }
+  }, [availableTasks.length, availableClientGroups.length, availableWorkerGroups.length]); // Only trigger when counts change
 
   const convertNaturalLanguageToRule = useCallback(async (naturalLanguageInput: string) => {
     setIsProcessing(true);
@@ -182,6 +247,7 @@ export default function NLRuleInput({
           <div>
             <h3 className="text-base font-semibold text-gray-900">Natural Language to Rules Converter</h3>
             <p className="text-sm text-gray-600 mt-0.5">Convert plain English instructions into structured business rules</p>
+            <p className="text-xs text-blue-600 mt-1 font-medium">✨ AI-powered with examples customized for your dataset</p>
           </div>
         </div>
       </div>
@@ -292,14 +358,36 @@ export default function NLRuleInput({
 
             {/* Example Queries */}
             <div className="space-y-3">
-              <label className="text-sm font-medium text-gray-700">Example instructions:</label>
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium text-gray-700">Example instructions</label>
+                <button
+                  type="button"
+                  onClick={generateContextualExamples}
+                  disabled={disabled || isProcessing || loadingExamples}
+                  className="px-2 py-1 text-xs text-blue-600 hover:text-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center space-x-1"
+                >
+                  {loadingExamples ? (
+                    <>
+                      <div className="w-3 h-3 border border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                      <span>Updating...</span>
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
+                      <span>Refresh</span>
+                    </>
+                  )}
+                </button>
+              </div>
               <div className="grid grid-cols-1 gap-2">
                 {exampleInputs.map((example, index) => (
                   <button
                     key={index}
                     type="button"
                     onClick={() => setInput(example)}
-                    disabled={disabled || isProcessing}
+                    disabled={disabled || isProcessing || loadingExamples}
                     className="px-3 py-2 text-sm bg-gray-50 text-gray-700 rounded-lg hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-left border border-gray-200"
                   >
                     {example}
@@ -322,6 +410,9 @@ export default function NLRuleInput({
                     <li>• <strong>Phase windows:</strong> "Task T8 can only run in phase 1 and 3"</li>
                     <li>• <strong>Slot restrictions:</strong> "Marketing group needs 2 common slots"</li>
                   </ul>
+                  <p className="mt-2 text-xs text-gray-500">
+                    💡 Examples above are personalized for your current data and will use actual task IDs and group names from your uploaded files.
+                  </p>
                 </div>
               </div>
             </div>

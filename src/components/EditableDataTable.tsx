@@ -281,7 +281,7 @@ export default function EditableDataTable({ data, onDataChange, title, highlight
             }
           }}
           autoFocus
-          className="w-full px-2 py-1 text-sm font-medium text-gray-700 bg-white border border-blue-300 rounded focus:outline-none focus:border-blue-500"
+          className="w-full px-2 py-2 text-sm font-medium text-gray-700 bg-white border border-blue-300 rounded focus:outline-none focus:border-blue-500"
         />
       );
     }
@@ -369,6 +369,7 @@ export default function EditableDataTable({ data, onDataChange, title, highlight
       </div>
     );
   }, [editingCell, flashingCells, hoveredCell, recentlyUpdatedCells, handleCellClick, handleCellEdit, handleCellBlur]);
+
 
   const columns: EditableColumn[] = useMemo(() => {
     console.log('Creating columns with headers:', data.headers);

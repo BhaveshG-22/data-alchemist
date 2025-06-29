@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import EditableDataTable from './EditableDataTable';
+import NLDataModifier from './NLDataModifier';
 import { ParsedData } from '@/utils/fileParser';
 
 interface TabbedDataViewProps {
@@ -104,19 +105,31 @@ export default function TabbedDataView({ parsedData, errors, onDataChange, onTab
             </div>
           </div>
         ) : activeTabData?.data ? (
-          <div className="p-0">
-            <EditableDataTable
-              key={`${activeTab}-${activeTabData.data.headers.join(',')}`}
-              data={activeTabData.data}
-              onDataChange={onDataChange(activeTab)}
-              title=""
-              highlightedCells={highlightedCells}
-              highlightedHeaders={highlightedHeaders?.filter(h => h.sheet === activeTab)}
-              hoveredCell={hoveredCell}
-              onHighlightComplete={onHighlightComplete}
-              targetRow={targetRow}
-              recentlyUpdatedCells={recentlyUpdatedCells?.filter(cell => cell.sheet === activeTab)}
-            />
+          <div className="space-y-4">
+            {/* Natural Language Data Modifier */}
+            <div className="p-4 border-b border-gray-200 bg-gray-50">
+              <NLDataModifier
+                data={activeTabData.data}
+                onDataChange={onDataChange(activeTab)}
+                tableName={activeTab}
+              />
+            </div>
+            
+            {/* Data Table */}
+            <div className="p-0">
+              <EditableDataTable
+                key={`${activeTab}-${activeTabData.data.headers.join(',')}`}
+                data={activeTabData.data}
+                onDataChange={onDataChange(activeTab)}
+                title=""
+                highlightedCells={highlightedCells}
+                highlightedHeaders={highlightedHeaders?.filter(h => h.sheet === activeTab)}
+                hoveredCell={hoveredCell}
+                onHighlightComplete={onHighlightComplete}
+                targetRow={targetRow}
+                recentlyUpdatedCells={recentlyUpdatedCells?.filter(cell => cell.sheet === activeTab)}
+              />
+            </div>
           </div>
         ) : (
           <div className="p-8 text-center">
