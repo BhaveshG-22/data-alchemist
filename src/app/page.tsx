@@ -133,9 +133,38 @@ export default function Home() {
           
           {sampleDataLoaded && (
             <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
-              <p className="text-green-800 text-sm text-center">
-                <strong>Sample data loaded!</strong> This comprehensive dataset includes validation test cases with edge cases and conflicts.
-              </p>
+              <h4 className="text-green-900 font-semibold mb-2 text-center">✅ Sample Data Loaded - Comprehensive Test Suite</h4>
+              <div className="text-green-800 text-sm space-y-2">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <p className="font-medium mb-1">📊 Data Volume:</p>
+                    <ul className="text-xs space-y-0.5 ml-2">
+                      <li>• 84 Tasks with diverse categories</li>
+                      <li>• 90 Workers with skill variations</li>
+                      <li>• 74 Clients with complex requirements</li>
+                      <li>• 50+ Business rules with conflicts</li>
+                    </ul>
+                  </div>
+                  <div>
+                    <p className="font-medium mb-1">🧪 Edge Cases Covered:</p>
+                    <ul className="text-xs space-y-0.5 ml-2">
+                      <li>• Duplicate IDs & missing references</li>
+                      <li>• Invalid ranges & boundary values</li>
+                      <li>• Malformed data & special characters</li>
+                      <li>• Circular dependencies & conflicts</li>
+                    </ul>
+                  </div>
+                </div>
+                <div className="mt-3 pt-2 border-t border-green-300">
+                  <p className="font-medium mb-1">🔍 Validation Scenarios:</p>
+                  <div className="text-xs grid grid-cols-2 md:grid-cols-4 gap-2">
+                    <span>• Skill coverage gaps</span>
+                    <span>• Worker overload detection</span>
+                    <span>• Business rule conflicts</span>
+                    <span>• Data integrity checks</span>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
         </div>
@@ -181,12 +210,29 @@ export default function Home() {
           
           {sampleDataLoaded && (
             <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-              <h3 className="text-blue-900 font-medium mb-2">🧪 Sample Data Information</h3>
-              <p className="text-blue-800 text-sm">
-                The loaded sample data contains <strong>comprehensive test cases</strong> including:
-                duplicate IDs, invalid ranges, missing skills, conflicting business rules, 
-                and circular dependencies. Perfect for testing all validation scenarios!
-              </p>
+              <h3 className="text-blue-900 font-medium mb-3">🧪 Sample Data - Edge Case Test Coverage</h3>
+              <div className="text-blue-800 text-sm grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <p className="font-medium mb-2">Data Quality Issues:</p>
+                  <ul className="space-y-1 text-xs">
+                    <li>• Empty fields & null values</li>
+                    <li>• Unicode & special characters</li>
+                    <li>• Malformed CSV structures</li>
+                    <li>• Invalid JSON in attributes</li>
+                    <li>• Boundary value violations</li>
+                  </ul>
+                </div>
+                <div>
+                  <p className="font-medium mb-2">Business Logic Conflicts:</p>
+                  <ul className="space-y-1 text-xs">
+                    <li>• Circular co-run dependencies</li>
+                    <li>• Phase window contradictions</li>
+                    <li>• Impossible load constraints</li>
+                    <li>• Skill coverage gaps</li>
+                    <li>• Worker capacity mismatches</li>
+                  </ul>
+                </div>
+              </div>
             </div>
           )}
           

@@ -1,15 +1,15 @@
 WorkerID,WorkerName,Skills,AvailableSlots,MaxLoadPerPhase,WorkerGroup,QualificationLevel
-W001,Alice Johnson,javascript,1,1,frontend,8
-W002,Bob Smith,sql,2,2,database,7
-W003,Carol White,design,3,2,creative,9
-W004,David Brown,python,4,3,analytics,8
+W001,Alice Johnson,javascript,5,4,frontend,8
+W002,Bob Smith,sql,4,3,database,7
+W003,Carol White,design,6,5,creative,9
+W004,David Brown,python,8,6,analytics,8
 W005,Emma Davis,nodejs,5,4,backend,7
 W006,Frank Wilson,testing,6,5,qa,6
 W007,Grace Lee,devops,7,6,infrastructure,9
 W008,Henry Garcia,react,8,7,frontend,8
 W009,Irene Martinez,security,9,8,security,10
 W010,Jack Anderson,javascript,10,9,frontend,7
-W011,Karen Taylor,python,2,1,analytics,8
+W011,Karen Taylor,python,4,3,analytics,8
 W012,Luke Thomas,integration,3,2,backend,6
 W013,Maria Rodriguez,research,4,3,research,9
 W014,Nathan Clark,review,5,4,qa,7
@@ -18,14 +18,77 @@ W016,Paul Walker,management,7,6,management,9
 W017,Quinn Hall,training,8,7,training,8
 W018,Rachel Young,javascript,9,8,frontend,7
 W019,Steve King,python,10,9,analytics,8
-W020,Tina Wright,design,1,1,creative,9
-DUPLICATE_WORKER,Duplicate Name,javascript,5,4,frontend,8
-W021,Over Capacity Worker,python,2,5,analytics,7
-W022,Invalid Qualification,javascript,5,4,frontend,15
-W023,Negative Qualification,python,3,2,analytics,-2
-W024,Empty Skills Worker,,4,3,general,5
-W025,Zero Load Worker,javascript,5,0,frontend,6
-W026,Negative Load Worker,python,4,-1,analytics,7
-DUPLICATE_WORKER,Another Duplicate,react,6,5,frontend,8
-W027,Overqualified Worker,javascript,3,2,frontend,11
-W028,Underqualified Worker,python,4,3,analytics,0
+W020,Tina Wright,design,3,2,creative,9
+W021,Uma Patel,"python,sql,machine_learning",5,4,analytics,9
+W022,Victor Chen,"javascript,react,redux",6,5,frontend,8
+W023,Wendy Kim,"aws,docker,kubernetes",4,3,infrastructure,8
+W024,Xavier Lopez,"nodejs,api,mongodb",5,4,backend,7
+W025,Yuki Tanaka,"testing,selenium,cypress",6,5,qa,8
+W026,Zara Ahmed,"security,encryption,authentication",4,3,security,10
+W027,Aaron Foster,"blockchain,solidity,web3",3,2,blockchain,9
+W028,Bella Rodriguez,"python,tensorflow,machine_learning",5,4,ai,10
+W029,Carlos Hernandez,"docker,kubernetes,microservices",4,3,infrastructure,8
+W030,Diana Chang,"writing,technical,markdown",6,5,content,7
+W031,Ethan Murphy,"management,leadership,communication",7,6,management,9
+W032,Fiona O'Brien,"monitoring,alerts,devops",5,4,infrastructure,8
+W033,George Patel,"sql,performance,indexing",4,3,database,8
+W034,Hannah Lee,"testing,javascript,selenium",6,5,qa,7
+W035,Ivan Petrov,"performance,jmeter,load_testing",3,2,qa,8
+W036,Julia Santos,"accessibility,wcag,a11y",4,3,frontend,7
+W037,Kevin O'Connor,"i18n,localization,translation",3,2,content,6
+W038,Luna Martinez,"refactoring,architecture,modernization",5,4,backend,9
+W039,Marcus Johnson,"communication,consulting,business",6,5,consulting,8
+W040,Nina Kowalski,"c++,c#,.net",4,3,backend,8
+W041,Oscar Ramirez,"java,spring,hibernate",5,4,backend,7
+W042,Priya Sharma,"cobol,mainframe,migration",2,1,legacy,6
+W043,Quinn Davis,"compliance,gdpr,sox",3,2,compliance,8
+W044,Rita Fernandez,"backup,recovery,continuity",4,3,infrastructure,7
+W045,Samuel Chen,"validation,quality,testing",5,4,qa,8
+W046,Tara Wilson,"中文,unicode,特殊字符",3,2,special,6
+W047,Ulrich Schmidt,"quantum_computing,research",2,1,research,10
+W048,Vera Popovic,"skill1,skill2,skill3,skill4,skill5",6,5,general,7
+W049,William Foster,"edge_skill,rare_skill",1,1,specialized,5
+W050,Xiomara Gutierrez,"spark,hadoop,big_data",4,3,data,8
+DUPLICATE_WORKER,Alice Duplicate,javascript,5,4,frontend,8
+W051,Over Capacity Worker,python,3,8,analytics,7
+W052,Invalid Qualification High,javascript,5,4,frontend,15
+W053,Invalid Qualification Low,python,4,3,analytics,0
+W054,Negative Qualification,javascript,5,4,frontend,-2
+W055,Zero Load Worker,python,5,0,analytics,6
+W056,Negative Load Worker,javascript,4,-1,frontend,7
+W057,Overload vs Slots Worker,python,2,10,analytics,8
+DUPLICATE_WORKER,Another Duplicate Alice,react,6,5,frontend,8
+W058,Empty Skills Worker,,4,3,general,5
+W059,Whitespace Skills Worker,"   ",5,4,general,6
+W060,Malformed Skills Worker,"skill1,,skill2,",4,3,general,7
+W061,Skills With Extra Spaces,"java script, pyt hon",5,4,general,6
+W062,Very Long Worker Name That Exceeds Normal Display Limits And Contains Many Words,javascript,5,4,frontend,8
+W063,Special Chars Worker !@#$%^&*(),python,4,3,analytics,7
+W064,Unicode Worker 中文姓名,中文,3,2,international,8
+W065,JSON-like Skills Worker,"[""skill1"",""skill2""]",4,3,malformed,6
+W066,Quoted Skills Worker,"""quoted_skill"",""another_skill""",5,4,malformed,7
+W067,Trailing Comma Skills,"skill1,skill2,",4,3,malformed,6
+W068,Leading Comma Skills,",skill1,skill2",5,4,malformed,7
+W069,Multiple Commas Skills,"skill1,,,,skill2",4,3,malformed,6
+W070,Only Commas Skills,",,,,",3,2,malformed,5
+W071,Mixed Case Skills Worker,"JavaScript,PYTHON,reAcT",5,4,general,7
+W072,Extreme Slots Worker,javascript,100,90,frontend,8
+W073,Extreme Load Worker,python,10,50,analytics,7
+W074,Decimal Slots Worker,javascript,5.5,4,frontend,8
+W075,Float Load Worker,python,5,4.5,analytics,7
+W076,Very High Qualification,javascript,5,4,frontend,11
+W077,Qualification Boundary Low,python,4,3,analytics,1
+W078,Qualification Boundary High,javascript,5,4,frontend,10
+,Empty WorkerID Worker,javascript,5,4,frontend,8
+W079,Worker with empty group,python,4,3,,7
+W080,,empty_name,javascript,5,4,frontend,8
+W081,Null-like Worker,null,null,null,null,null
+W082,Zero Values Worker,javascript,0,0,frontend,0
+W083,Boundary Test Worker,python,1,1,analytics,1
+W084,High Skill Count Worker,"s1,s2,s3,s4,s5,s6,s7,s8,s9,s10,s11,s12,s13,s14,s15,s16,s17,s18,s19,s20",10,8,polyglot,9
+W085,Single Character Skill,a,2,1,minimal,5
+W086,Numbers in Skills,"skill1,skill2,skill3,999,abc123",4,3,mixed,6
+W087,Special Skill Characters,"c++,c#,.net,node.js,vue.js",5,4,technical,8
+W088,Hyphenated Skills,"full-stack,cross-platform,multi-threading",4,3,hyphenated,7
+W089,Underscored Skills,"machine_learning,data_science,web_development",5,4,underscored,8
+W090,Case Sensitive Skills,"React,REACT,react,ReAcT",3,2,case_test,6

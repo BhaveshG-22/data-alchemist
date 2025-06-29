@@ -1247,6 +1247,93 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
       } catch (error) {
         console.error('Error applying AI out-of-range fix:', error);
       }
+    }
+    // Handle duplicate ID validation fixes
+    else if (issue.category === 'duplicate_ids' && issue.row !== undefined && issue.column && issue.sheet) {
+      try {
+        // Extract the new unique ID from the AI suggestion
+        let fixedValue = '';
+
+        // Pattern 1: 💡 Fix:CLIENT_024 (exactly as shown in screenshot)
+        let fixMatch = aiSuggestion.match(/💡\s*Fix:\s*([A-Z_0-9]+)/);
+
+        // Pattern 2: 💡 **Fix**: CLIENT_024 (with bold formatting)
+        if (!fixMatch) {
+          fixMatch = aiSuggestion.match(/💡\s*\*\*Fix\*\*:\s*([A-Z_0-9]+)/);
+        }
+
+        // Pattern 3: Generic Fix: pattern
+        if (!fixMatch) {
+          fixMatch = aiSuggestion.match(/Fix:\s*([A-Z_0-9]+)/);
+        }
+
+        // Pattern 4: Look for ID patterns like CLIENT_024, W001, T001 etc.
+        if (!fixMatch) {
+          fixMatch = aiSuggestion.match(/([A-Z]+_?\d{2,3})/);
+        }
+
+        // Pattern 5: Look for any uppercase ID after 💡
+        if (!fixMatch) {
+          fixMatch = aiSuggestion.match(/💡[^A-Z]*([A-Z][A-Z_0-9]+)/);
+        }
+
+        if (!fixMatch) {
+          console.error('Could not extract ID fix from AI suggestion:', aiSuggestion);
+          return;
+        }
+
+        fixedValue = fixMatch[1].trim();
+
+        // Basic validation to ensure it looks like a valid ID
+        if (!fixedValue || fixedValue.length < 2) {
+          console.error('AI suggested fix does not look like a valid ID:', fixedValue);
+          return;
+        }
+
+        console.log(`Applying duplicate ID fix: ${fixedValue} for column ${issue.column}`);
+
+        // Apply the fix to the data
+        const sheetName = issue.sheet as 'clients' | 'workers' | 'tasks';
+        const currentSheetData = parsedData[sheetName];
+
+        if (!currentSheetData) {
+          console.error('Sheet data not found:', sheetName);
+          return;
+        }
+
+        // Create a copy of the data with the fix applied
+        const updatedRows = [...currentSheetData.rows];
+        if (updatedRows[issue.row] && issue.column) {
+          updatedRows[issue.row] = {
+            ...updatedRows[issue.row],
+            [issue.column]: fixedValue
+          };
+        }
+
+        const updatedSheetData = {
+          ...currentSheetData,
+          rows: updatedRows
+        };
+
+        // Update the data using the existing handler
+        await handleDataChange(sheetName)(updatedSheetData);
+
+        // Mark cell as recently updated and clear hover state after a short delay
+        markCellAsUpdated(sheetName, issue.row, issue.column);
+
+        // Clear hover state after a brief moment to let user see the green background
+        setTimeout(() => {
+          setHoveredIssue(null);
+          if (hoverTimeout) {
+            clearTimeout(hoverTimeout);
+            setHoverTimeout(null);
+          }
+        }, 1000);
+
+        console.log(`✅ Applied AI duplicate ID fix to ${sheetName} sheet, row ${issue.row + 1}, column ${issue.column}`);
+      } catch (error) {
+        console.error('Error applying AI duplicate ID fix:', error);
+      }
     } else {
       console.log('AI fix not implemented for this issue type:', issue.category);
       console.log('Issue:', issue);
