@@ -11,21 +11,101 @@ export const parseFile = (file: File): Promise<ParsedData> => {
     const fileExtension = file.name.split('.').pop()?.toLowerCase();
 
     if (fileExtension === 'csv') {
+      // First try with Papa Parse with robust configuration
       Papa.parse(file, {
         header: true,
         skipEmptyLines: true,
+        quoteChar: '"',
+        escapeChar: '"',
+        delimiter: ',',
+        newline: '\n',
+        dynamicTyping: false,
+        skipEmptyLines: 'greedy',
+        fastMode: false, // Disable fast mode for better error handling
+        transformHeader: (header) => {
+          return header ? header.toString().trim() : '';
+        },
+        transform: (value, field) => {
+          // Handle empty values and preserve them as empty strings
+          if (value === null || value === undefined) {
+            return '';
+          }
+          // For string values, trim but preserve empty strings
+          if (typeof value === 'string') {
+            return value.trim();
+          }
+          return String(value);
+        },
         complete: (results) => {
+          const headers = results.meta.fields || [];
+          const rawRows = results.data as Record<string, unknown>[];
+          
+          // Handle parsing errors more gracefully
           if (results.errors.length > 0) {
-            reject(new Error('CSV parsing error: ' + results.errors[0].message));
-            return;
+            const fieldMismatchErrors = results.errors.filter(error => 
+              error.type === 'FieldMismatch'
+            );
+            
+            if (fieldMismatchErrors.length > 0) {
+              console.warn(`CSV parsing warnings: ${fieldMismatchErrors.length} field mismatch issues detected, continuing with best effort parsing...`);
+            }
+            
+            // Only reject on critical errors, not field mismatches
+            const criticalErrors = results.errors.filter(error => 
+              error.type !== 'FieldMismatch' && error.type !== 'TooManyFields'
+            );
+            
+            if (criticalErrors.length > 0) {
+              const errorMsg = criticalErrors[0];
+              reject(new Error(`CSV parsing error: ${errorMsg.message}${errorMsg.row !== undefined ? ` at row ${errorMsg.row + 1}` : ''}`));
+              return;
+            }
           }
           
-          const headers = results.meta.fields || [];
-          const rows = results.data as Record<string, unknown>[];
-          resolve({ headers, rows });
+          // Clean up rows to ensure consistent field count and handle malformed data
+          const cleanedRows = rawRows.map((row) => {
+            const cleanedRow: Record<string, unknown> = {};
+            
+            // Get all keys from the row (may be more than headers due to parsing issues)
+            const rowKeys = Object.keys(row);
+            
+            // If we have more keys than headers, it likely means field splitting issues
+            if (rowKeys.length > headers.length) {
+              // Try to reconstruct by taking only the expected number of fields
+              headers.forEach((header, i) => {
+                cleanedRow[header] = rowKeys[i] ? row[rowKeys[i]] : '';
+              });
+              
+              // If the last field appears to be JSON, try to reconstruct it
+              const lastHeaderIndex = headers.length - 1;
+              const lastHeader = headers[lastHeaderIndex];
+              
+              if (lastHeader && (lastHeader.toLowerCase().includes('json') || lastHeader.toLowerCase().includes('attributes'))) {
+                // Reconstruct the JSON field from remaining values
+                const jsonParts = rowKeys.slice(lastHeaderIndex).map(key => row[key]).filter(val => val !== '');
+                if (jsonParts.length > 1) {
+                  cleanedRow[lastHeader] = jsonParts.join(',');
+                }
+              }
+            } else {
+              // Normal case: ensure all headers have a corresponding value
+              headers.forEach(header => {
+                cleanedRow[header] = row[header] !== undefined ? row[header] : '';
+              });
+            }
+            
+            return cleanedRow;
+          }).filter(row => {
+            // Filter out completely empty rows
+            return Object.values(row).some(value => value !== '' && value !== null && value !== undefined);
+          });
+          
+          console.log(`Successfully parsed CSV: ${headers.length} headers, ${cleanedRows.length} data rows (${results.errors.length} warnings)`);
+          
+          resolve({ headers, rows: cleanedRows });
         },
         error: (error) => {
-          reject(error);
+          reject(new Error(`CSV parsing failed: ${error.message}`));
         }
       });
     } else if (fileExtension === 'xlsx' || fileExtension === 'xls') {

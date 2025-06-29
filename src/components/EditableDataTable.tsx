@@ -42,7 +42,7 @@ export default function EditableDataTable({ data, onDataChange, title, highlight
   const [headerKey, setHeaderKey] = useState(0);
   const [sortConfig, setSortConfig] = useState<{ column: string; direction: 'asc' | 'desc' } | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [rowsPerPage, setRowsPerPage] = useState(50);
+  const [rowsPerPage, setRowsPerPage] = useState(100);
 
   // Navigate to specific row when targetRow changes
   useEffect(() => {

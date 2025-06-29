@@ -16,18 +16,18 @@ import { validateSkillCoverage } from './validateSkillCoverage';
 import { validateConcurrencyFeasibility } from './validateConcurrencyFeasibility';
 
 const VALIDATORS = [
-  validateMissingColumns, // DONE
-  validateDuplicateIDs,// DONE
-  validateMalformedLists,// DONE
-  validateOutOfRange, // DONE
-  validateJSONFields,  // DONE
-  validateReferences, // DONE
-  validateCircularCoRun,
-  validateConflictingRules,
-  // validateOverloadedWorkers,
-  // validatePhaseSaturation,
-  validateSkillCoverage,
-  // validateConcurrencyFeasibility,
+  validateMissingColumns, // DONE - Basic data structure validation
+  validateDuplicateIDs, // DONE - ID uniqueness validation
+  validateMalformedLists, // DONE - List format validation
+  validateOutOfRange, // DONE - Value range validation
+  validateJSONFields, // DONE - JSON structure validation
+  validateReferences, // DONE - Cross-reference validation
+  validateSkillCoverage, // DONE - Skill availability validation
+  validateOverloadedWorkers, // DONE - Worker capacity validation
+  validateConcurrencyFeasibility, // DONE - Concurrency constraints validation
+  validatePhaseSaturation, // DONE - Phase capacity vs demand validation
+  validateCircularCoRun, // DONE - Circular dependency detection
+  validateConflictingRules, // DONE - Business rule conflict detection
 ];
 
 export function runAllValidations(context: ValidatorContext): ValidationResult {

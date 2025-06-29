@@ -40,8 +40,12 @@ export function parseJSON(value: unknown): { isValid: boolean; parsed?: unknown;
 
   try {
     const parsed = JSON.parse(value);
-    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
-      return { isValid: false, error: 'Expected a JSON object' };
+    // Accept null as a valid JSON value, but reject arrays and non-object primitives
+    if (parsed === null) {
+      return { isValid: true, parsed };
+    }
+    if (typeof parsed !== 'object' || Array.isArray(parsed)) {
+      return { isValid: false, error: 'Expected a JSON object or null' };
     }
     return { isValid: true, parsed };
   } catch (error) {

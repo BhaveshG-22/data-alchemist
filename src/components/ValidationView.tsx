@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback } from 'react';
 import TabbedDataView from './TabbedDataView';
 import IssuesSidebar from './IssuesSidebar';
 import RuleInputUI from './RuleInputUI';
+import NaturalLanguageQuery from './NaturalLanguageQuery';
+import FilteredDataView from './FilteredDataView';
 // import ValidationSummary from './ValidationSummary';
 import { parseFile, ParsedData } from '@/utils/fileParser';
 import {
@@ -17,6 +19,14 @@ import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import Drawer from 'react-modern-drawer';
 import 'react-modern-drawer/dist/index.css';
+
+interface QueryResult {
+  query: string;
+  sheet: 'clients' | 'workers' | 'tasks';
+  filteredRows: Record<string, unknown>[];
+  totalRows: number;
+  filterFunction: string;
+}
 
 interface ValidationViewProps {
   uploadedFiles: {
@@ -116,6 +126,8 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
   const [businessRules, setBusinessRules] = useState<BusinessRule[]>([]);
   const [showRuleDrawer, setShowRuleDrawer] = useState(false);
   const [showColumnMappingDialog, setShowColumnMappingDialog] = useState(false);
+  const [queryResult, setQueryResult] = useState<QueryResult | null>(null);
+  const [showFilteredData, setShowFilteredData] = useState(false);
   const [columnMappingSuggestions, setColumnMappingSuggestions] = useState<{
     mappings: Array<{ originalHeader: string; suggestedHeader: string; confidence: number; reasoning: string }>;
     unmappedColumns: string[];
@@ -508,7 +520,7 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
 
     // Only highlight if the issue has a specific row and column
     if (issue.row !== undefined && issue.column) {
-      const rowsPerPage = 50; // Standard pagination size
+      const rowsPerPage = 100; // Standard pagination size
       const targetPage = Math.ceil((issue.row + 1) / rowsPerPage);
       const isCurrentSheet = issue.sheet === activeTab;
 
@@ -754,56 +766,47 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
           }
         };
 
-        // Progressive delay attempts to ensure DOM is ready
-        setTimeout(scrollToCellIfNeeded, 100);
+        // Check if we need to navigate to a different page first
+        const currentPage = Math.ceil((issue.row + 1) / rowsPerPage);
+        console.log(`🧭 Issue row ${issue.row + 1} should be on page ${currentPage}`);
         
-        // Multiple fallback attempts with increasing delays
-        setTimeout(() => {
-          const cellSelector1 = `[data-row="${issue.row}"][data-column="${issue.column}"]`;
-          const cellSelector2 = `[data-cell-id="cell-${issue.row}-${issue.column}"]`;
-          let cellElement = document.querySelector(cellSelector1);
-          if (!cellElement) {
-            cellElement = document.querySelector(cellSelector2);
-          }
-          if (!cellElement) {
-            console.log(`🔄 Retry 1: Cell still not found after 300ms, trying again...`);
-            scrollToCellIfNeeded();
-          }
-        }, 300);
-
-        // Final fallback with navigation if cell still not found
-        setTimeout(() => {
-          const cellSelector1 = `[data-row="${issue.row}"][data-column="${issue.column}"]`;
-          const cellSelector2 = `[data-cell-id="cell-${issue.row}-${issue.column}"]`;
-          let cellElement = document.querySelector(cellSelector1);
-          if (!cellElement) {
-            cellElement = document.querySelector(cellSelector2);
-          }
-          if (!cellElement) {
-            console.log(`🔄 Final fallback: Cell not found after 800ms, using setTargetRow navigation`);
-            setTargetRow(issue.row);
-          }
-        }, 800);
-
-        // Always navigate to the target row and ensure correct pagination
-        console.log(`🧭 Navigating to row ${issue.row + 1} on page ${targetPage}`);
+        // Always set target row for navigation
         setTargetRow(issue.row);
         
-        // Also force a scroll after a delay to ensure the cell is visible
-        setTimeout(() => {
-          if (issue.row !== undefined) {
-            const cellSelector = `[data-row="${issue.row}"][data-column="${issue.column}"]`;
-            const cellElement = document.querySelector(cellSelector);
+        // Set up delayed scroll with multiple attempts to account for page navigation
+        const attemptScroll = (attemptNumber: number, maxAttempts: number = 3) => {
+          const delay = attemptNumber === 1 ? 200 : attemptNumber * 300;
+          
+          const timeoutId = setTimeout(() => {
+            console.log(`🔄 Scroll attempt ${attemptNumber}/${maxAttempts} after ${delay}ms`);
+            
+            const cellSelector1 = `[data-row="${issue.row}"][data-column="${issue.column}"]`;
+            const cellSelector2 = `[data-cell-id="cell-${issue.row}-${issue.column}"]`;
+            let cellElement = document.querySelector(cellSelector1) || document.querySelector(cellSelector2);
+            
             if (cellElement) {
+              console.log(`✅ Cell found on attempt ${attemptNumber}, scrolling...`);
               cellElement.scrollIntoView({
                 behavior: 'smooth',
                 block: 'center',
                 inline: 'center'
               });
-              console.log(`🔄 Force-scrolled to cell at row ${issue.row + 1}, column ${issue.column}`);
+            } else if (attemptNumber < maxAttempts) {
+              console.log(`❌ Cell not found on attempt ${attemptNumber}, trying again...`);
+              attemptScroll(attemptNumber + 1, maxAttempts);
+            } else {
+              console.log(`❌ Cell not found after ${maxAttempts} attempts, giving up`);
             }
+          }, delay);
+          
+          // Store the timeout for cleanup (only store the first one)
+          if (attemptNumber === 1) {
+            setHoverTimeout(timeoutId);
           }
-        }, 500);
+        };
+        
+        // Start the scroll attempts
+        attemptScroll(1);
       } else {
         // For different sheet, auto-navigate without toast
         console.log(`🧭 Auto-navigating to ${issue.sheet} sheet, row ${issue.row + 1}, page ${targetPage}`);
@@ -849,9 +852,9 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
         // Pattern 1: 💡 **Fix**: {...}
         let fixMatch = aiSuggestion.match(/💡\s*\*\*Fix\*\*:\s*(.+?)(?=\n\n|\n📊|\n✅|$)/);
 
-        // Pattern 2: "Fix": {...}
+        // Pattern 2: Fix: {...} (simple format without quotes/asterisks)
         if (!fixMatch) {
-          fixMatch = aiSuggestion.match(/["\*]*Fix["\*]*:\s*(.+?)(?=\n\n|\n[📊✅]|$)/);
+          fixMatch = aiSuggestion.match(/Fix:\s*(.+?)(?=\n\n|\n[📊✅]|$)/);
         }
 
         // Pattern 3: Look for any JSON object in the response (handle nested objects)
@@ -1254,27 +1257,27 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
         // Extract the new unique ID from the AI suggestion
         let fixedValue = '';
 
-        // Pattern 1: 💡 Fix:CLIENT_024 (exactly as shown in screenshot)
-        let fixMatch = aiSuggestion.match(/💡\s*Fix:\s*([A-Z_0-9]+)/);
+        // Pattern 1: 💡 Fix:CLIENT_024 or 💡 Fix:client_062 (case insensitive)
+        let fixMatch = aiSuggestion.match(/💡\s*Fix:\s*([A-Za-z_0-9]+)/i);
 
-        // Pattern 2: 💡 **Fix**: CLIENT_024 (with bold formatting)
+        // Pattern 2: 💡 **Fix**: CLIENT_024 or client_062 (with bold formatting)
         if (!fixMatch) {
-          fixMatch = aiSuggestion.match(/💡\s*\*\*Fix\*\*:\s*([A-Z_0-9]+)/);
+          fixMatch = aiSuggestion.match(/💡\s*\*\*Fix\*\*:\s*([A-Za-z_0-9]+)/i);
         }
 
-        // Pattern 3: Generic Fix: pattern
+        // Pattern 3: Generic Fix: pattern (case insensitive)
         if (!fixMatch) {
-          fixMatch = aiSuggestion.match(/Fix:\s*([A-Z_0-9]+)/);
+          fixMatch = aiSuggestion.match(/Fix:\s*([A-Za-z_0-9]+)/i);
         }
 
-        // Pattern 4: Look for ID patterns like CLIENT_024, W001, T001 etc.
+        // Pattern 4: Look for ID patterns like CLIENT_024, W001, T001, client_062 etc.
         if (!fixMatch) {
-          fixMatch = aiSuggestion.match(/([A-Z]+_?\d{2,3})/);
+          fixMatch = aiSuggestion.match(/([A-Za-z]+_?\d{2,3})/);
         }
 
-        // Pattern 5: Look for any uppercase ID after 💡
+        // Pattern 5: Look for any ID after 💡 (case insensitive)
         if (!fixMatch) {
-          fixMatch = aiSuggestion.match(/💡[^A-Z]*([A-Z][A-Z_0-9]+)/);
+          fixMatch = aiSuggestion.match(/💡[^A-Za-z]*([A-Za-z][A-Za-z_0-9]+)/i);
         }
 
         if (!fixMatch) {
@@ -1333,6 +1336,94 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
         console.log(`✅ Applied AI duplicate ID fix to ${sheetName} sheet, row ${issue.row + 1}, column ${issue.column}`);
       } catch (error) {
         console.error('Error applying AI duplicate ID fix:', error);
+      }
+    }
+    // Handle concurrency feasibility fixes
+    else if (issue.category === 'concurrency_feasibility' && issue.row !== undefined && issue.column && issue.sheet) {
+      try {
+        // Extract the fixed numeric value from the AI suggestion
+        let fixedValue = '';
+
+        // Pattern 1: 💡 Fix:2 (exactly as shown in screenshot)
+        let fixMatch = aiSuggestion.match(/💡\s*\*\*Fix\*\*:\s*(\d+(?:\.\d+)?)/);
+
+        // Pattern 2: 💡 **Fix**: 2 (with bold formatting)
+        if (!fixMatch) {
+          fixMatch = aiSuggestion.match(/💡\s*Fix:\s*(\d+(?:\.\d+)?)/);
+        }
+
+        // Pattern 3: Generic Fix: pattern
+        if (!fixMatch) {
+          fixMatch = aiSuggestion.match(/Fix:\s*(\d+(?:\.\d+)?)/);
+        }
+
+        // Pattern 4: Look for just a standalone number after 💡
+        if (!fixMatch) {
+          fixMatch = aiSuggestion.match(/💡[^0-9]*(\d+(?:\.\d+)?)/);
+        }
+
+        // Pattern 5: Last resort - any number in the suggestion
+        if (!fixMatch) {
+          fixMatch = aiSuggestion.match(/(\d+(?:\.\d+)?)/);
+        }
+
+        if (!fixMatch) {
+          console.error('Could not extract numeric fix from AI suggestion:', aiSuggestion);
+          return;
+        }
+
+        fixedValue = fixMatch[1].trim();
+
+        // Validate that the fixed value is actually a number and positive
+        const numericValue = parseFloat(fixedValue);
+        if (isNaN(numericValue) || numericValue <= 0) {
+          console.error('AI suggested fix is not a valid positive number:', fixedValue);
+          return;
+        }
+
+        console.log(`Applying concurrency feasibility fix: ${fixedValue} for column ${issue.column}`);
+
+        // Apply the fix to the data
+        const sheetName = issue.sheet as 'clients' | 'workers' | 'tasks';
+        const currentSheetData = parsedData[sheetName];
+
+        if (!currentSheetData) {
+          console.error('Sheet data not found:', sheetName);
+          return;
+        }
+
+        // Create a copy of the data with the fix applied
+        const updatedRows = [...currentSheetData.rows];
+        if (updatedRows[issue.row] && issue.column) {
+          updatedRows[issue.row] = {
+            ...updatedRows[issue.row],
+            [issue.column]: fixedValue
+          };
+        }
+
+        const updatedSheetData = {
+          ...currentSheetData,
+          rows: updatedRows
+        };
+
+        // Update the data using the existing handler
+        await handleDataChange(sheetName)(updatedSheetData);
+
+        // Mark cell as recently updated and clear hover state after a short delay
+        markCellAsUpdated(sheetName, issue.row, issue.column);
+
+        // Clear hover state after a brief moment to let user see the green background
+        setTimeout(() => {
+          setHoveredIssue(null);
+          if (hoverTimeout) {
+            clearTimeout(hoverTimeout);
+            setHoverTimeout(null);
+          }
+        }, 1000);
+
+        console.log(`✅ Applied AI concurrency fix to ${sheetName} sheet, row ${issue.row + 1}, column ${issue.column}`);
+      } catch (error) {
+        console.error('Error applying AI concurrency fix:', error);
       }
     } else {
       console.log('AI fix not implemented for this issue type:', issue.category);
@@ -1436,6 +1527,23 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
 
     return [...new Set(groups)]; // Remove duplicates
   }, [parsedData.workers]);
+
+  // Handle natural language query results
+  const handleQueryResult = useCallback((result: QueryResult) => {
+    setQueryResult(result);
+    setShowFilteredData(!!result.query);
+    
+    // If there's a query result, switch to the relevant tab
+    if (result.query && result.sheet) {
+      setActiveTab(result.sheet);
+    }
+  }, []);
+
+  // Clear natural language filter
+  const handleClearFilter = useCallback(() => {
+    setQueryResult(null);
+    setShowFilteredData(false);
+  }, []);
 
   // Debug logging
   console.log('ValidationView parsedData state:', {
@@ -1787,19 +1895,37 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
             onIssueClick={handleIssueClick}
           /> */}
 
-
-          <TabbedDataView
+          {/* Natural Language Query */}
+          <NaturalLanguageQuery
             parsedData={parsedData}
-            errors={errors}
-            onDataChange={handleDataChange}
-            onTabChange={setActiveTab}
-            highlightedCells={highlightedCells}
-            highlightedHeaders={highlightedHeaders}
-            hoveredCell={hoveredIssue}
-            onHighlightComplete={handleHighlightComplete}
-            targetRow={targetRow}
-            recentlyUpdatedCells={recentlyUpdatedCells}
+            onQueryResult={handleQueryResult}
+            disabled={loading || !parsedData.clients && !parsedData.workers && !parsedData.tasks}
           />
+
+          {/* Filtered Data View (shown when there's a query result) */}
+          {showFilteredData && queryResult && (
+            <FilteredDataView
+              queryResult={queryResult}
+              originalData={parsedData[queryResult.sheet]}
+              onClearFilter={handleClearFilter}
+            />
+          )}
+
+          {/* Regular Data View (hidden when showing filtered results) */}
+          {!showFilteredData && (
+            <TabbedDataView
+              parsedData={parsedData}
+              errors={errors}
+              onDataChange={handleDataChange}
+              onTabChange={setActiveTab}
+              highlightedCells={highlightedCells}
+              highlightedHeaders={highlightedHeaders}
+              hoveredCell={hoveredIssue}
+              onHighlightComplete={handleHighlightComplete}
+              targetRow={targetRow}
+              recentlyUpdatedCells={recentlyUpdatedCells}
+            />
+          )}
         </div>
 
         {/* Issues Sidebar */}

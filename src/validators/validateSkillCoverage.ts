@@ -41,7 +41,7 @@ export function validateSkillCoverage(context: ValidatorContext): ValidationIssu
               `No worker has the skill "${skill}" required by task${taskInfo}`,
               {
                 sheet: 'tasks',
-                row: i + 1,
+                row: i,
                 column: 'RequiredSkills',
                 value: skill,
                 type: 'error',

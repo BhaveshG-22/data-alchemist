@@ -441,7 +441,7 @@ export default function IssuesSidebar({ issues, parsedData, activeTab, onIssueCl
                                         <>
                                           <span>Row {issue.row + 1}</span>
                                           <span className="ml-2 px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded text-xs">
-                                            Page {Math.ceil((issue.row + 1) / 50)}
+                                            Page {Math.ceil((issue.row + 1) / 100)}
                                           </span>
                                         </>
                                       )}

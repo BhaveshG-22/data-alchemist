@@ -134,20 +134,25 @@ Issue Context:
 - Current Value: {currentValue}
 - Expected Format: {expectedFormat}
 
-Task: Convert the invalid JSON string into a valid JSON object. Extract meaningful key-value pairs from the text content.
+Task: Convert the invalid JSON string into a valid JSON object. Follow these rules:
 
-Examples of good JSON conversions:
+CRITICAL RULES:
+1. If the current value is literally "null" (the string), return just: null
+2. If the current value contains meaningful data, extract key-value pairs
+3. DO NOT create imaginary JSON objects - only extract what's actually there
+
+Examples:
+- "null" → null
 - "name John age 30" → {"name": "John", "age": 30}
 - "status active priority high" → {"status": "active", "priority": "high"}
 - "location New York budget 50000" → {"location": "New York", "budget": 50000}
-- "category premium features advanced" → {"category": "premium", "features": "advanced"}
 
 Response format:
-💡 **Fix**: [Valid JSON object - no quotes around the entire object]
+💡 **Fix**: [Valid JSON - either null or object based on actual content]
 📊 **Explanation**: [Why this fix works]
 ✅ **Example**: [Show correct format with example]
 
-CRITICAL: The Fix section must contain ONLY the valid JSON object without any wrapping quotes or additional text.
+CRITICAL: If the value is "null" string, return just null. Do NOT create fake JSON objects.
 
 Solution:`,
 
@@ -200,28 +205,24 @@ Response format:
 
 Solution:`,
 
-  concurrency_feasibility: `You are a data validation expert helping users fix concurrency issues.
+  concurrency_feasibility: `You are a data validation expert helping users fix concurrency feasibility issues.
 
 Issue Context:
 - File Type: {fileType}
 - Column: {column}
 - Issue: {issueMessage}
 - Current Invalid Value: {currentValue}
-- Data Type Required: {dataType}
 
-Task: Convert the current invalid value into proper JSON format. The result should be a flat JSON object with meaningful key-value pairs extracted from the text, NOT nested under the column name.
+Task: Suggest a feasible MaxConcurrent value based on available qualified workers.
 
-Examples of good conversions:
-- "location New York budget 50000" → {"location": "New York", "budget": 50000}
-- "priority high deadline 2024-01-15" → {"priority": "high", "deadline": "2024-01-15"}
-- "ensure deliverables align with project scope" → {"description": "ensure deliverables align with project scope"}
-- "status active category premium" → {"status": "active", "category": "premium"}
+The issue indicates that the current MaxConcurrent value exceeds the number of qualified workers available. You need to suggest a number that matches the available worker capacity.
 
 Response format:
-💡 **Fix**: [Only the JSON object - no wrapping, no column name prefix]
-📝 **How to Fix**: [Explain the conversion logic]
+💡 **Fix**: [Just the number - e.g. "2", "3", "5"]
+📝 **How to Fix**: [Explain why this value is appropriate based on available workers]
+⚖️ **Balance**: [How this achieves proper resource allocation]
 
-IMPORTANT: Return ONLY the JSON object in the Fix section. Do not wrap it with the column name.
+IMPORTANT: Return ONLY the numeric value in the Fix section, not a JSON object.
 
 Solution:`,
 
@@ -287,7 +288,34 @@ Response format:
 
 Important: The Suggested Value should be the EXACT text to put in the cell.
 
-Solution:`
+Solution:`,
+
+  natural_language_query: `You are a JavaScript filter function generator. Convert natural language queries into JavaScript filter functions for data retrieval.
+
+Context:
+- Target Sheet: {sheet}
+- Data Schema: {schema}
+- User Query: "{query}"
+
+Important parsing rules:
+- PreferredPhases: Array like [1,2,3] or parsed from ranges/comma-separated values
+- Skills/RequiredSkills: Arrays of strings
+- Duration: Numeric values (number of phases)
+- IDs: String values, may be arrays for multiple references
+- Priority/Level fields: Numeric or string values
+- All field names are already parsed and available as properties
+
+Task: Generate a JavaScript function body that returns true/false for filtering.
+
+Examples:
+- "tasks longer than 2 phases" → "task.Duration > 2"
+- "tasks that prefer phase 3" → "task.PreferredPhases && task.PreferredPhases.includes(3)"
+- "high priority clients" → "client.PriorityLevel && (String(client.PriorityLevel).toLowerCase().includes('high') || Number(client.PriorityLevel) >= 4)"
+- "workers with JavaScript skills" → "worker.Skills && worker.Skills.some(skill => skill.toLowerCase().includes('javascript'))"
+
+Return ONLY the JavaScript expression that evaluates to true/false (without 'return' keyword):
+
+`
 };
 
 // File type context for better suggestions
@@ -325,7 +353,34 @@ const FILE_CONTEXTS = {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { issue, currentHeaders, sampleData, missingColumns, unexpectedColumns, requiredHeaders, sheet } = body;
+    const { issue, query, category, context, currentHeaders, sampleData, missingColumns, unexpectedColumns, requiredHeaders, sheet } = body;
+
+    // Handle natural language query requests
+    if (category === 'natural_language_query' && query && context) {
+      const templateKey = 'natural_language_query';
+      const promptTemplate = PROMPT_TEMPLATES[templateKey];
+
+      // Create prompt variables for natural language query
+      const promptVariables: Record<string, string> = {
+        sheet: context.sheet || 'unknown',
+        schema: context.schema || 'No schema provided',
+        query: query || 'No query provided'
+      };
+
+      // Process template
+      let processedTemplate = promptTemplate;
+      Object.entries(promptVariables).forEach(([varName, value]) => {
+        processedTemplate = processedTemplate.replace(new RegExp(`\\{${varName}\\}`, 'g'), value);
+      });
+
+      const response = await llm.invoke(processedTemplate);
+
+      return NextResponse.json({
+        suggestion: response.content || response,
+        issueType: category,
+        query: query,
+      });
+    }
 
     if (!issue) {
       return NextResponse.json(
