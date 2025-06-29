@@ -5,6 +5,7 @@ import TabbedDataView from './TabbedDataView';
 import IssuesSidebar from './IssuesSidebar';
 import RuleInputUI from './RuleInputUI';
 import NaturalLanguageQuery from './NaturalLanguageQuery';
+import NLDataModifier from './NLDataModifier';
 import FilteredDataView from './FilteredDataView';
 import PrioritizationWeights from './PrioritizationWeights';
 import ExportButton from './ExportButton';
@@ -1921,7 +1922,7 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
       {/* Main Content */}
       <div className="flex-1 flex">
         {/* Main Data View */}
-        <div className="flex-1 p-6 space-y-6 overflow-y-auto">
+        <div className="flex-1 p-6 pt-8 space-y-6 overflow-y-auto">
 
           {/* Validation Summary */}
           {/* <ValidationSummary 
@@ -1934,6 +1935,13 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
             parsedData={parsedData}
             onQueryResult={handleQueryResult}
             disabled={loading || !parsedData.clients && !parsedData.workers && !parsedData.tasks}
+          />
+
+          {/* Natural Language Data Modification */}
+          <NLDataModifier
+            data={parsedData[activeTab] || { headers: [], rows: [] }}
+            onDataChange={handleDataChange(activeTab)}
+            tableName={activeTab}
           />
 
           {/* Filtered Data View (shown when there's a query result) */}

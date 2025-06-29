@@ -39,6 +39,8 @@ export default function NLDataModifier({ data, onDataChange, tableName = 'data' 
   const [preview, setPreview] = useState<ModificationPreview | null>(null);
   const [showPreview, setShowPreview] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [lastCommand, setLastCommand] = useState('');
   // const [showTemplates, setShowTemplates] = useState(false);
   
   const {
@@ -157,7 +159,8 @@ export default function NLDataModifier({ data, onDataChange, tableName = 'data' 
 
     onDataChange(newData);
 
-    // Reset state
+    // Reset state and save last command
+    setLastCommand(command);
     setCommand('');
     setPreview(null);
     setShowPreview(false);
@@ -184,14 +187,47 @@ export default function NLDataModifier({ data, onDataChange, tableName = 'data' 
   };
 
   return (
-    <Card className="w-full">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <MessageSquare className="h-5 w-5" />
-          Natural Language Data Modification
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
+    <div className="bg-white border border-gray-200 rounded-lg shadow-sm">
+      {/* Accordion Header */}
+      <button
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 focus:outline-none focus:bg-gray-100 transition-colors duration-150"
+      >
+        <div className="flex items-center space-x-3 min-w-0 flex-1">
+          <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center flex-shrink-0">
+            <MessageSquare className="w-4 h-4 text-purple-600" />
+          </div>
+          <div className="text-left min-w-0 flex-1">
+            <h3 className="text-base font-semibold text-gray-900">Natural Language Data Modification</h3>
+            <p className="text-sm text-gray-500 mt-0.5">Modify your data using plain English commands</p>
+          </div>
+        </div>
+        <div className="flex items-center space-x-3 flex-shrink-0 ml-4">
+          {lastCommand && !isExpanded && (
+            <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full max-w-32 truncate">
+              "{lastCommand}"
+            </span>
+          )}
+          {totalModifications > 0 && !isExpanded && (
+            <span className="text-xs text-purple-600 bg-purple-100 px-2 py-1 rounded-full">
+              {totalModifications} changes
+            </span>
+          )}
+          <svg 
+            className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
+            fill="none" 
+            stroke="currentColor" 
+            viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </div>
+      </button>
+
+      {/* Accordion Content */}
+      <div className={`overflow-hidden transition-all duration-300 ease-in-out ${isExpanded ? 'max-h-screen' : 'max-h-0'}`}>
+        <div className="px-4 pb-4 border-t border-gray-200">
+          <div className="space-y-4 mt-4">
         {/* Command Input and Controls */}
         <div className="space-y-3">
           <div className="flex gap-2">
@@ -404,11 +440,13 @@ export default function NLDataModifier({ data, onDataChange, tableName = 'data' 
           </Card>
         )}
 
-        {/* Stats */}
-        <div className="text-xs text-gray-500">
-          Working with {data.rows.length} rows across {data.headers.length} columns
+            {/* Stats */}
+            <div className="text-xs text-gray-500">
+              Working with {data.rows.length} rows across {data.headers.length} columns
+            </div>
+          </div>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }

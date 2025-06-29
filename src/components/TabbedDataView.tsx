@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import EditableDataTable from './EditableDataTable';
-import NLDataModifier from './NLDataModifier';
 import { ParsedData } from '@/utils/fileParser';
 
 interface TabbedDataViewProps {
@@ -106,15 +105,6 @@ export default function TabbedDataView({ parsedData, errors, onDataChange, onTab
           </div>
         ) : activeTabData?.data ? (
           <div className="space-y-4">
-            {/* Natural Language Data Modifier */}
-            <div className="p-4 border-b border-gray-200 bg-gray-50">
-              <NLDataModifier
-                data={activeTabData.data}
-                onDataChange={onDataChange(activeTab)}
-                tableName={activeTab}
-              />
-            </div>
-            
             {/* Data Table */}
             <div className="p-0">
               <EditableDataTable

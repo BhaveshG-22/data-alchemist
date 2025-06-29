@@ -48,9 +48,9 @@ export default function Home() {
     
     try {
       // Create File objects from sample data
-      const tasksResponse = await fetch('/test-data/tasks.csv');
-      const workersResponse = await fetch('/test-data/workers.csv');
-      const clientsResponse = await fetch('/test-data/clients.csv');
+      const tasksResponse = await fetch('/sample/Sample-tasks.csv');
+      const workersResponse = await fetch('/sample/Sample-workers.csv');
+      const clientsResponse = await fetch('/sample/Sample-clients.csv');
 
       const tasksBlob = await tasksResponse.blob();
       const workersBlob = await workersResponse.blob();

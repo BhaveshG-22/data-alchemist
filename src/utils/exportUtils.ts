@@ -10,8 +10,24 @@ export interface ExportRule {
 export interface ExportData {
   version: string;
   generated: string;
-  rules: ExportRule[];
-  priorities: Record<string, number>;
+  metadata: {
+    exportedBy: string;
+    totalRecords: {
+      clients: number;
+      workers: number;
+      tasks: number;
+    };
+    validationSummary: {
+      totalRules: number;
+      activeRules: number;
+    };
+  };
+  businessRules: ExportRule[];
+  prioritizationSettings: {
+    weights: Record<string, number>;
+    criteria: string[];
+    lastUpdated?: string;
+  };
 }
 
 export function exportCSVFile(data: Record<string, unknown>[], fileName: string): void {
@@ -138,7 +154,7 @@ export async function exportAsZip(
 
     if (tasksData) {
       const cleanTasks = cleanDataForExport(tasksData);
-      const validTasks = filterValidRows(validTasks);
+      const validTasks = filterValidRows(cleanTasks);
       const csv = Papa.unparse(validTasks);
       zip.file('tasks.csv', csv);
     }
