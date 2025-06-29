@@ -34,22 +34,40 @@ export function createValidationResult(issues: ValidationIssue[]): ValidationRes
 }
 
 export function parseJSON(value: unknown): { isValid: boolean; parsed?: unknown; error?: string } {
+  // Normalize input - convert to string and trim
+  const raw = String(value ?? "").trim();
+  
+  // Check if empty string
+  if (!raw) {
+    return { isValid: false, error: 'Value is empty' };
+  }
+
+  // Only proceed if we have a non-empty string
   if (typeof value !== 'string') {
     return { isValid: false, error: 'Value is not a string' };
   }
 
   try {
-    const parsed = JSON.parse(value);
-    // Accept null as a valid JSON value, but reject arrays and non-object primitives
-    if (parsed === null) {
-      return { isValid: true, parsed };
+    const parsed = JSON.parse(raw);
+    
+    // Must be a plain object (not null, not array, not primitive)
+    if (
+      typeof parsed !== 'object' ||
+      parsed === null ||
+      Array.isArray(parsed)
+    ) {
+      if (parsed === null) {
+        return { isValid: false, error: 'Parsed value is null (expected JSON object)' };
+      }
+      if (Array.isArray(parsed)) {
+        return { isValid: false, error: 'Parsed value is an array (expected JSON object)' };
+      }
+      return { isValid: false, error: 'Parsed value is not a JSON object' };
     }
-    if (typeof parsed !== 'object' || Array.isArray(parsed)) {
-      return { isValid: false, error: 'Expected a JSON object or null' };
-    }
+    
     return { isValid: true, parsed };
   } catch (error) {
-    return { isValid: false, error: error instanceof Error ? error.message : 'Invalid JSON' };
+    return { isValid: false, error: error instanceof Error ? error.message : 'Invalid JSON syntax' };
   }
 }
 

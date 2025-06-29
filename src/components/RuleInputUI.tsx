@@ -1,9 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faPlus, faTrash, faEdit, faSave, faTimes, faDownload } from '@fortawesome/free-solid-svg-icons';
 import { BusinessRule } from '@/validators/types';
+import NLRuleInput from './NLRuleInput';
+import { useToast } from '@/hooks/useToast';
+import ToastContainer from './ToastContainer';
 
 interface RuleInputUIProps {
   rules: BusinessRule[];
@@ -57,6 +60,8 @@ export default function RuleInputUI({
   const [isAddingRule, setIsAddingRule] = useState(false);
   const [editingRule, setEditingRule] = useState<string | null>(null);
   const [showConflicts, setShowConflicts] = useState(false);
+  const [showNLConverter, setShowNLConverter] = useState(false);
+  const { toasts, removeToast, showSuccess, showWarning } = useToast();
   const [formData, setFormData] = useState<RuleFormData>({
     type: 'coRun',
     description: '',
@@ -290,6 +295,7 @@ export default function RuleInputUI({
     onRulesChange([...rules, newRule]);
     resetForm();
     setIsAddingRule(false);
+    showSuccess(`Rule added: ${ruleTypeLabels[newRule.type]} created successfully!`);
   };
 
   const handleEditRule = (ruleId: string) => {
@@ -384,11 +390,16 @@ export default function RuleInputUI({
     resetForm();
     setIsAddingRule(false);
     setEditingRule(null);
+    showSuccess(`Rule updated: ${ruleTypeLabels[formData.type]} modified successfully!`);
   };
 
   const handleDeleteRule = (ruleId: string) => {
+    const rule = rules.find(r => r.id === ruleId);
     const updatedRules = rules.filter(rule => rule.id !== ruleId);
     onRulesChange(updatedRules);
+    if (rule) {
+      showWarning(`Rule deleted: ${ruleTypeLabels[rule.type]} removed`);
+    }
   };
 
   const handleToggleActive = (ruleId: string) => {
@@ -402,6 +413,23 @@ export default function RuleInputUI({
     resetForm();
     setIsAddingRule(false);
     setEditingRule(null);
+  };
+
+  const handleNLRuleGenerated = (rule: BusinessRule) => {
+    onRulesChange([...rules, rule]);
+    setShowNLConverter(false);
+    
+    // Show success toast with rule details
+    const ruleTypeDisplay = {
+      coRun: 'Co-run',
+      slotRestriction: 'Slot restriction', 
+      loadLimit: 'Load limit',
+      phaseWindow: 'Phase window',
+      patternMatch: 'Pattern match',
+      precedenceOverride: 'Precedence override'
+    };
+    
+    showSuccess(`✅ Rule added: ${ruleTypeDisplay[rule.type]} rule created successfully!`);
   };
 
   const handleGenerateRulesConfig = () => {
@@ -481,9 +509,7 @@ export default function RuleInputUI({
     URL.revokeObjectURL(url);
 
     // Show success message
-    console.log('✅ Rules configuration exported successfully!');
-    console.log('📁 File: rules.json');
-    console.log('📊 Active rules exported:', cleanRules.length);
+    showSuccess(`Rules exported successfully! ${cleanRules.length} active rules saved to rules.json`);
   };
 
   const renderFormFields = () => {
@@ -791,7 +817,9 @@ export default function RuleInputUI({
   }, {} as Record<BusinessRule['type'], BusinessRule[]>);
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
+    <>
+      <ToastContainer toasts={toasts} onRemoveToast={removeToast} />
+      <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
       {/* Header */}
       <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
         <div className="flex items-center justify-between">
@@ -825,14 +853,25 @@ export default function RuleInputUI({
                 <span>Generate Rules Config</span>
               </button>
             )}
-            {!isAddingRule && (
-              <button
-                onClick={() => setIsAddingRule(true)}
-                className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
-              >
-                <FontAwesomeIcon icon={faPlus} className="w-4 h-4" />
-                <span>Add Rule</span>
-              </button>
+            {!isAddingRule && !showNLConverter && (
+              <div className="flex space-x-3">
+                <button
+                  onClick={() => setShowNLConverter(true)}
+                  className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors flex items-center space-x-2"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                  <span>AI Rule Generator</span>
+                </button>
+                <button
+                  onClick={() => setIsAddingRule(true)}
+                  className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
+                >
+                  <FontAwesomeIcon icon={faPlus} className="w-4 h-4" />
+                  <span>Manual Rule</span>
+                </button>
+              </div>
             )}
           </div>
         </div>
@@ -878,6 +917,27 @@ export default function RuleInputUI({
                 </div>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* Natural Language Rule Converter */}
+        {showNLConverter && (
+          <div className="mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <h4 className="text-md font-medium text-gray-900">AI Rule Generator</h4>
+              <button
+                onClick={() => setShowNLConverter(false)}
+                className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <FontAwesomeIcon icon={faTimes} className="w-4 h-4" />
+              </button>
+            </div>
+            <NLRuleInput
+              onRuleGenerated={handleNLRuleGenerated}
+              availableTasks={availableTasks}
+              availableClientGroups={availableClientGroups}
+              availableWorkerGroups={availableWorkerGroups}
+            />
           </div>
         )}
 
@@ -1089,5 +1149,6 @@ export default function RuleInputUI({
         )}
       </div>
     </div>
+    </>
   );
 }

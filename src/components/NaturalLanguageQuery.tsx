@@ -234,7 +234,7 @@ Return ONLY the JavaScript expression (no 'return' keyword, no function wrapper)
 
       // Remove any markdown formatting or extra text
       const lines = filterFunctionBody.split('\n');
-      const codeLines = lines.filter(line => {
+      const codeLines = lines.filter((line: string) => {
         const trimmed = line.trim();
         return trimmed && 
                !trimmed.startsWith('//') && 
@@ -282,7 +282,7 @@ Return ONLY the JavaScript expression (no 'return' keyword, no function wrapper)
         }
       } catch (syntaxError) {
         console.error('Filter function syntax error:', syntaxError);
-        throw new Error(`Invalid filter function: ${syntaxError.message}`);
+        throw new Error(`Invalid filter function: ${(syntaxError as Error).message}`);
       }
 
       // Apply filter
@@ -342,7 +342,7 @@ Return ONLY the JavaScript expression (no 'return' keyword, no function wrapper)
               fallbackFunction = `String(${targetSheet.slice(0, -1)}.${nameField} || '').toLowerCase().startsWith('${letter}')`;
               
               const fallbackFilterFunc = new Function(targetSheet.slice(0, -1), `return ${fallbackFunction}`);
-              fallbackResults = sheetData.rows.filter((row, index) => {
+              fallbackResults = sheetData.rows.filter((row, _index) => {
                 try {
                   const parsedRow: Record<string, unknown> = {};
                   sheetData.headers.forEach(header => {
@@ -364,7 +364,7 @@ Return ONLY the JavaScript expression (no 'return' keyword, no function wrapper)
           sheet: targetSheet,
           filteredRows: fallbackResults,
           totalRows: sheetData.rows.length,
-          filterFunction: fallbackFunction || `return false; // Error: ${error.message}`
+          filterFunction: fallbackFunction || `return false; // Error: ${(error as Error).message}`
         });
       } else {
         // Show empty result on error
@@ -373,7 +373,7 @@ Return ONLY the JavaScript expression (no 'return' keyword, no function wrapper)
           sheet: targetSheet,
           filteredRows: [],
           totalRows: parsedData[targetSheet]?.rows.length || 0,
-          filterFunction: `return false; // Error: ${error.message}`
+          filterFunction: `return false; // Error: ${(error as Error).message}`
         });
       }
     } finally {
@@ -412,93 +412,119 @@ Return ONLY the JavaScript expression (no 'return' keyword, no function wrapper)
   ];
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
-      <div className="flex items-center space-x-3 mb-4">
-        <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-          <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+    <div className="bg-white border border-gray-200 rounded-lg shadow-sm">
+      {/* Accordion Header */}
+      <button
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 focus:outline-none focus:bg-gray-100 transition-colors duration-150"
+      >
+        <div className="flex items-center space-x-3 min-w-0 flex-1">
+          <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+            <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </div>
+          <div className="text-left min-w-0 flex-1">
+            <h3 className="text-base font-semibold text-gray-900">Natural Language Search</h3>
+            <p className="text-sm text-gray-500 mt-0.5">Search your data using plain English queries</p>
+          </div>
+        </div>
+        <div className="flex items-center space-x-3 flex-shrink-0 ml-4">
+          {lastQuery && !isExpanded && (
+            <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full max-w-32 truncate">
+              "{lastQuery}"
+            </span>
+          )}
+          <svg 
+            className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
+            fill="none" 
+            stroke="currentColor" 
+            viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
           </svg>
         </div>
-        <div>
-          <h3 className="text-lg font-semibold text-gray-900">Natural Language Search</h3>
-          <p className="text-sm text-gray-600">Search your data using plain English queries</p>
+      </button>
+
+      {/* Accordion Content */}
+      <div className={`overflow-hidden transition-all duration-300 ease-in-out ${isExpanded ? 'max-h-screen' : 'max-h-0'}`}>
+        <div className="px-4 pb-4 border-t border-gray-200">
+          <form onSubmit={handleSubmit} className="space-y-4 mt-4">
+            <div className="relative">
+              <input
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="e.g., Show tasks longer than 2 phases that prefer phase 3"
+                disabled={disabled || isProcessing}
+                className="w-full px-4 py-3 pr-32 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-50 disabled:text-gray-500 text-sm"
+              />
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center space-x-2">
+                {query && (
+                  <button
+                    type="button"
+                    onClick={handleClear}
+                    disabled={disabled || isProcessing}
+                    className="px-2 py-1 text-xs text-gray-500 hover:text-gray-700 disabled:opacity-50 hover:bg-gray-100 rounded transition-colors"
+                  >
+                    Clear
+                  </button>
+                )}
+                <button
+                  type="submit"
+                  disabled={!query.trim() || disabled || isProcessing}
+                  className="px-3 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center space-x-1.5 text-sm font-medium transition-colors"
+                >
+                  {isProcessing ? (
+                    <>
+                      <div className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin"></div>
+                      <span>Processing...</span>
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                      </svg>
+                      <span>Search</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* Example queries */}
+            <div className="space-y-3">
+              <label className="text-sm font-medium text-gray-700">Example queries:</label>
+              <div className="flex flex-wrap gap-2">
+                {exampleQueries.map((example, index) => (
+                  <button
+                    key={index}
+                    type="button"
+                    onClick={() => setQuery(example)}
+                    disabled={disabled || isProcessing}
+                    className="px-3 py-1.5 text-sm bg-gray-100 text-gray-700 rounded-full hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {example}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </form>
+
+          {lastQuery && (
+            <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="flex items-center space-x-2">
+                <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span className="text-sm text-blue-800">
+                  Last query: <span className="font-medium">"{lastQuery}"</span>
+                </span>
+              </div>
+            </div>
+          )}
         </div>
       </div>
-
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="relative">
-          <input
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="e.g., Show tasks longer than 2 phases that prefer phase 3"
-            disabled={disabled || isProcessing}
-            className="w-full px-4 py-3 pr-24 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-50 disabled:text-gray-500"
-          />
-          <div className="absolute right-2 top-2 flex space-x-2">
-            {query && (
-              <button
-                type="button"
-                onClick={handleClear}
-                disabled={disabled || isProcessing}
-                className="px-3 py-1 text-sm text-gray-500 hover:text-gray-700 disabled:opacity-50"
-              >
-                Clear
-              </button>
-            )}
-            <button
-              type="submit"
-              disabled={!query.trim() || disabled || isProcessing}
-              className="px-4 py-1 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center space-x-1"
-            >
-              {isProcessing ? (
-                <>
-                  <div className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin"></div>
-                  <span>Processing...</span>
-                </>
-              ) : (
-                <>
-                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
-                  <span>Search</span>
-                </>
-              )}
-            </button>
-          </div>
-        </div>
-
-        {/* Example queries */}
-        <div className="space-y-2">
-          <label className="text-sm font-medium text-gray-700">Example queries:</label>
-          <div className="flex flex-wrap gap-2">
-            {exampleQueries.map((example, index) => (
-              <button
-                key={index}
-                type="button"
-                onClick={() => setQuery(example)}
-                disabled={disabled || isProcessing}
-                className="px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded-full hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {example}
-              </button>
-            ))}
-          </div>
-        </div>
-      </form>
-
-      {lastQuery && (
-        <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-          <div className="flex items-center space-x-2">
-            <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <span className="text-sm text-blue-800">
-              Last query: <span className="font-medium">"{lastQuery}"</span>
-            </span>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import DataTable from 'react-data-table-component';
 import { ParsedData } from '@/utils/fileParser';
 
@@ -38,11 +38,13 @@ export default function EditableDataTable({ data, onDataChange, title, highlight
   const [editingCell, setEditingCell] = useState<{ rowIndex: number; column: string } | null>(null);
   const [editingHeader, setEditingHeader] = useState<string | null>(null);
   const [flashingCells, setFlashingCells] = useState<Set<string>>(new Set());
+  const headerInputRef = useRef<HTMLInputElement>(null);
   const [flashingHeaders, setFlashingHeaders] = useState<Set<string>>(new Set());
   const [headerKey, setHeaderKey] = useState(0);
   const [sortConfig, setSortConfig] = useState<{ column: string; direction: 'asc' | 'desc' } | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(100);
+
 
   // Navigate to specific row when targetRow changes
   useEffect(() => {
@@ -156,8 +158,11 @@ export default function EditableDataTable({ data, onDataChange, title, highlight
     setEditingCell(null);
   };
 
-  const handleHeaderEdit = (oldHeader: string, newHeader: string) => {
-    if (oldHeader === newHeader) return;
+  const handleHeaderEdit = useCallback((oldHeader: string, newHeader: string) => {
+    if (oldHeader === newHeader) {
+      setEditingHeader(null);
+      return;
+    }
     
     // Update headers array
     const newHeaders = data.headers.map(h => h === oldHeader ? newHeader : h);
@@ -179,7 +184,28 @@ export default function EditableDataTable({ data, onDataChange, title, highlight
     
     onDataChange(updatedData);
     setEditingHeader(null);
-  };
+  }, [data.headers, tableData, onDataChange]);
+
+  // Handle outside click for header editing
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (editingHeader && headerInputRef.current && !headerInputRef.current.contains(event.target as Node)) {
+        // Save the current value before closing
+        if (headerInputRef.current.value !== editingHeader) {
+          handleHeaderEdit(editingHeader, headerInputRef.current.value);
+        } else {
+          setEditingHeader(null);
+        }
+      }
+    };
+
+    if (editingHeader) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+      };
+    }
+  }, [editingHeader, handleHeaderEdit]);
 
   const handleHeaderClick = (header: string) => {
     setEditingHeader(header);
@@ -241,6 +267,7 @@ export default function EditableDataTable({ data, onDataChange, title, highlight
     if (isEditing) {
       return (
         <input
+          ref={headerInputRef}
           type="text"
           defaultValue={header}
           onBlur={(e) => {

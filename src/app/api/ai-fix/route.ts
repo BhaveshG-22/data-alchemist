@@ -124,35 +124,12 @@ Response format:
 
 Solution:`,
 
-  json_fields: `You are a data validation expert helping users fix JSON format issues.
+  json_fields: `This is not valid JSON: {currentValue}
 
-Issue Context:
-- File Type: {fileType}
-- Column: {column}
-- Row: {row}
-- Issue: {issueMessage}
-- Current Value: {currentValue}
-- Expected Format: {expectedFormat}
-
-Task: Convert the invalid JSON string into a valid JSON object. Follow these rules:
-
-CRITICAL RULES:
-1. If the current value is literally "null" (the string), return just: null
-2. If the current value contains meaningful data, extract key-value pairs
-3. DO NOT create imaginary JSON objects - only extract what's actually there
-
-Examples:
-- "null" → null
-- "name John age 30" → {"name": "John", "age": 30}
-- "status active priority high" → {"status": "active", "priority": "high"}
-- "location New York budget 50000" → {"location": "New York", "budget": 50000}
+Return valid JSON using this as the main source for the JSON content.
 
 Response format:
-💡 **Fix**: [Valid JSON - either null or object based on actual content]
-📊 **Explanation**: [Why this fix works]
-✅ **Example**: [Show correct format with example]
-
-CRITICAL: If the value is "null" string, return just null. Do NOT create fake JSON objects.
+💡 **Fix**: [Valid JSON object]
 
 Solution:`,
 
@@ -315,7 +292,62 @@ Examples:
 
 Return ONLY the JavaScript expression that evaluates to true/false (without 'return' keyword):
 
-`
+`,
+
+  natural_language_rule_conversion: `You are an assistant that converts plain English task rules into structured JSON rules for a resource allocation system.
+
+Available context for better rule generation:
+- Available Tasks: {availableTasks}
+- Available Client Groups: {availableClientGroups}
+- Available Worker Groups: {availableWorkerGroups}
+
+User Input: "{query}"
+
+Supported rule formats (respond with EXACTLY one of these formats):
+
+1. Co-Run Rules (tasks that must run together):
+{ "type": "coRun", "tasks": ["T1", "T2"] }
+
+2. Slot Restriction Rules (group minimum common slots):
+{ "type": "slotRestriction", "group": "GroupA", "minCommonSlots": 2 }
+
+3. Load Limit Rules (maximum tasks per phase for a group):
+{ "type": "loadLimit", "group": "GroupB", "maxSlotsPerPhase": 3 }
+
+4. Phase Window Rules (restrict task to specific phases):
+{ "type": "phaseWindow", "task": "T12", "phases": [1, 2, 3] }
+OR
+{ "type": "phaseWindow", "task": "T12", "phaseRange": {"start": 1, "end": 3} }
+
+5. Precedence Rules (task ordering):
+{ "type": "precedence", "before": "T1", "after": "T2" }
+
+CRITICAL RULES:
+1. Respond with ONLY valid JSON - no explanations, no markdown formatting
+2. Use only supported rule types listed above
+3. For co-run rules, include at least 2 tasks
+4. For phase rules, use either "phases" array OR "phaseRange" object, not both
+5. All task IDs should match available tasks when possible
+6. Group names should match available groups when possible
+7. Phase numbers should be between 1-5
+
+Examples:
+Input: "Make T005 and T006 run together"
+Output: { "type": "coRun", "tasks": ["T005", "T006"] }
+
+Input: "Limit GroupB to 2 tasks per phase"
+Output: { "type": "loadLimit", "group": "GroupB", "maxSlotsPerPhase": 2 }
+
+Input: "Task T8 can only run in phase 1 and 3"
+Output: { "type": "phaseWindow", "task": "T8", "phases": [1, 3] }
+
+Input: "Marketing group needs at least 2 common slots"
+Output: { "type": "slotRestriction", "group": "Marketing", "minCommonSlots": 2 }
+
+Input: "T1 must run before T2"
+Output: { "type": "precedence", "before": "T1", "after": "T2" }
+
+Respond with only the JSON object:`
 };
 
 // File type context for better suggestions
@@ -365,6 +397,34 @@ export async function POST(request: NextRequest) {
         sheet: context.sheet || 'unknown',
         schema: context.schema || 'No schema provided',
         query: query || 'No query provided'
+      };
+
+      // Process template
+      let processedTemplate = promptTemplate;
+      Object.entries(promptVariables).forEach(([varName, value]) => {
+        processedTemplate = processedTemplate.replace(new RegExp(`\\{${varName}\\}`, 'g'), value);
+      });
+
+      const response = await llm.invoke(processedTemplate);
+
+      return NextResponse.json({
+        suggestion: response.content || response,
+        issueType: category,
+        query: query,
+      });
+    }
+
+    // Handle natural language rule conversion requests
+    if (category === 'natural_language_rule_conversion' && query) {
+      const templateKey = 'natural_language_rule_conversion';
+      const promptTemplate = PROMPT_TEMPLATES[templateKey];
+
+      // Create prompt variables for rule conversion
+      const promptVariables: Record<string, string> = {
+        query: query || 'No query provided',
+        availableTasks: context?.availableTasks ? context.availableTasks.join(', ') : 'T001, T002, T003, T004, T005',
+        availableClientGroups: context?.availableClientGroups ? context.availableClientGroups.join(', ') : 'GroupA, GroupB, Marketing',
+        availableWorkerGroups: context?.availableWorkerGroups ? context.availableWorkerGroups.join(', ') : 'Backend, Frontend, QA'
       };
 
       // Process template

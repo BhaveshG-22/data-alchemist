@@ -327,7 +327,7 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
 
           setParsingProgress({
             currentFile: fileType,
-            step: `Analyzing ${fileType} columns with AI...`,
+            step: `Analyzing ${fileType} columns`,
             filesProcessed: i,
             totalFiles: uploadedFilesList.length
           });
