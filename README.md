@@ -4,25 +4,25 @@ Data Alchemist is an intelligent data validation and transformation tool designe
 ## 🚀 Bonus X-Factor Features
 These features go beyond standard requirements to deliver a polished, intelligent user experience:
 
-✅ **AI-Powered Automated Headers Mapping**  
+✅ **AI-Powered Automated Headers Mapping** (`/src/app/api/ai-column-mapping/route.ts`)  
 Automatically maps uploaded column headers to internal standardized names using contextual AI, ensuring accurate alignment even with inconsistent or messy input formats.
 
-✅ **AI-Powered Business Rules Generator**  
+✅ **AI-Powered Business Rules Generator** (`/src/components/NLRuleInput.tsx`)  
 Analyzes uploaded data in real-time and suggests only those business rules that are relevant and applicable to the current dataset, helping users avoid guesswork and invalid configurations.
 
-✅ **Intelligent Error Fixes with Suggestions**  
+✅ **Intelligent Error Fixes with Suggestions** (`/src/app/api/ai-fix/route.ts`, `/src/components/IssuesSidebar.tsx`)  
 Detects validation issues and offers precise fix suggestions based on contextual clues from surrounding fields. Supports automatic inline updates for faster cleanup.
 
-✅ **Undo/Redo History for Natural Language Data Modification**  
+✅ **Undo/Redo History for Natural Language Data Modification** (`/src/hooks/useDataModificationHistory.ts`, `/src/components/NLDataModifier.tsx`)  
 Track every change made through natural language commands with a full history log. Instantly undo or redo modifications to maintain control over your dataset.
 
-✅ **Smart Data Export with Multiple Formats**  
+✅ **Smart Data Export with Multiple Formats** (`/src/components/ExportButton.tsx`, `/src/utils/exportUtils.ts`)  
 Export cleaned data in individual CSV files or as a bundled ZIP archive. Includes comprehensive sample data with 90 realistic tech industry tasks, 50 diverse workers, and 30 major enterprise clients.
 
-✅ **Real-time Comprehensive Validation Suite**  
+✅ **Real-time Comprehensive Validation Suite** (`/src/validators/index.ts`, `/src/components/ValidationView.tsx`)  
 Goes beyond basic validation with 12+ sophisticated validation rules including circular dependency detection, skill coverage analysis, and worker overload prevention.
 
-✅ **Natural Language Query & Modification Engine**  
+✅ **Natural Language Query & Modification Engine** (`/src/components/NaturalLanguageQuery.tsx`, `/src/app/api/nl-modify/route.ts`)  
 Query your data using plain English and make bulk modifications through conversational commands. Full command template system with intelligent suggestions.
 
 ---
@@ -30,16 +30,16 @@ Query your data using plain English and make bulk modifications through conversa
 ## ✅ Core Assignment Tasks - VERIFIED IMPLEMENTATIONS
 
 ### 1. Data Ingestion
-- ✅ **Upload CSV or XLSX for 3 entities**: clients, workers, tasks (FileUpload component)
-- ✅ **Parse files correctly**: PapaParse for CSV, file parsing utilities implemented
-- ✅ **Display in data grid with inline editing**: EditableDataTable component with edit capabilities
-- ✅ **Normalize fields**: Field parsing for PreferredPhases, AvailableSlots in validators
+- ✅ **Upload CSV or XLSX for 3 entities**: clients, workers, tasks (`/src/components/FileUpload.tsx`)
+- ✅ **Parse files correctly**: PapaParse for CSV, XLSX.js for Excel (`/src/utils/fileParser.ts`)
+- ✅ **Display in data grid with inline editing**: EditableDataTable component (`/src/components/EditableDataTable.tsx`)
+- ✅ **Normalize fields**: Field parsing for PreferredPhases, AvailableSlots (`/src/validators/validateMalformedLists.ts`)
 
 ### 2. Validation + In-App Data Changes
-- ✅ **Run validations on file upload**: ValidationView component triggers validation
-- ✅ **Run validations on inline edits**: Real-time validation in data tables
-- ✅ **Show validation errors inline**: Cell highlighting system implemented
-- ✅ **Display validation summary**: Validation dashboard with error counts
+- ✅ **Run validations on file upload**: ValidationView component triggers validation (`/src/components/ValidationView.tsx`)
+- ✅ **Run validations on inline edits**: Real-time validation in data tables (`/src/components/EditableDataTable.tsx`)
+- ✅ **Show validation errors inline**: Cell highlighting system implemented (`/src/components/EditableDataTable.tsx`)
+- ✅ **Display validation summary**: Validation dashboard with error counts (`/src/components/IssuesSidebar.tsx`)
 
 #### Core Validations (12/12 Complete - VERIFIED IN CODE!)
 ✅ **All 12 validation rules are actually implemented** in `/src/validators/`:
@@ -58,54 +58,54 @@ Query your data using plain English and make bulk modifications through conversa
 12. ✅ **Max-concurrency feasibility** - validateConcurrencyFeasibility.ts
 
 ### 3. Rule Input UI
-✅ **Complete rule management system implemented** in RuleInputUI.tsx:
+✅ **Complete rule management system implemented** (`/src/components/RuleInputUI.tsx`):
 
-- ✅ **UI to add coRun rule**: Full form interface with task selection
-- ✅ **Slot-restriction rule**: Group and slot configuration
-- ✅ **Load-limit rule**: Worker group load limits
-- ✅ **Phase-window rule**: Task phase restrictions
-- ✅ **Pattern-match rule**: Pattern-based rule creation
-- ✅ **Precedence override rule**: Task precedence management
-- ✅ **"Generate Rules Config" button**: Export functionality implemented
-- ✅ **Download rules.json**: JSON export with all rule data
+- ✅ **UI to add coRun rule**: Full form interface with task selection (`/src/components/RuleInputUI.tsx`)
+- ✅ **Slot-restriction rule**: Group and slot configuration (`/src/components/RuleInputUI.tsx`)
+- ✅ **Load-limit rule**: Worker group load limits (`/src/components/RuleInputUI.tsx`)
+- ✅ **Phase-window rule**: Task phase restrictions (`/src/components/RuleInputUI.tsx`)
+- ✅ **Pattern-match rule**: Pattern-based rule creation (`/src/components/RuleInputUI.tsx`)
+- ✅ **Precedence override rule**: Task precedence management (`/src/components/RuleInputUI.tsx`)
+- ✅ **"Generate Rules Config" button**: Export functionality implemented (`/src/components/RuleInputUI.tsx`)
+- ✅ **Download rules.json**: JSON export with all rule data (`/src/utils/exportUtils.ts`)
 
 ### 4. Prioritization & Weights
-✅ **Comprehensive prioritization system** in PrioritizationWeights.tsx:
+✅ **Comprehensive prioritization system** (`/src/components/PrioritizationWeights.tsx`):
 
-- ✅ **Sliders/numeric inputs**: Interactive weight adjustment sliders
-- ✅ **Preset profiles**: 5 preconfigured profiles (Maximize Fulfillment, Fair Distribution, etc.)
-- ✅ **Store prioritization settings**: App state management implemented
-- ✅ **Include priorities in rules.json**: Export integration verified
+- ✅ **Sliders/numeric inputs**: Interactive weight adjustment sliders (`/src/components/PrioritizationWeights.tsx`)
+- ✅ **Preset profiles**: 5 preconfigured profiles (Maximize Fulfillment, Fair Distribution, etc.) (`/src/config/prioritizationCriteria.ts`)
+- ✅ **Store prioritization settings**: App state management implemented (`/src/components/ValidationView.tsx`)
+- ✅ **Include priorities in rules.json**: Export integration verified (`/src/utils/exportUtils.ts`)
 
 *Note: Drag-and-drop ranking and pairwise comparison (AHP) not implemented*
 
 ### 5. Export Functionality
-✅ **Complete export system** in ExportButton.tsx and exportUtils.ts:
+✅ **Complete export system** (`/src/components/ExportButton.tsx` and `/src/utils/exportUtils.ts`):
 
-- ✅ **Export clients.csv (cleaned)**: Data cleaning and CSV export
-- ✅ **Export workers.csv (cleaned)**: Data cleaning and CSV export
-- ✅ **Export tasks.csv (cleaned)**: Data cleaning and CSV export
-- ✅ **Export rules.json**: Business rules + prioritization settings
-- ✅ **BONUS**: ZIP archive option for bundled download
+- ✅ **Export clients.csv (cleaned)**: Data cleaning and CSV export (`/src/utils/exportUtils.ts`)
+- ✅ **Export workers.csv (cleaned)**: Data cleaning and CSV export (`/src/utils/exportUtils.ts`)
+- ✅ **Export tasks.csv (cleaned)**: Data cleaning and CSV export (`/src/utils/exportUtils.ts`)
+- ✅ **Export rules.json**: Business rules + prioritization settings (`/src/utils/exportUtils.ts`)
+- ✅ **BONUS**: ZIP archive option for bundled download (`/src/utils/exportUtils.ts`)
 
 ## 🤖 AI/Bonus Tasks - EXTENSIVELY IMPLEMENTED!
 
 ### ✅ AI Features Actually Working:
 
-1. ✅ **Smart header mapping**: `/api/ai-column-mapping` for column mapping
-2. ✅ **AI-based validations beyond the 12 rules**: Advanced AI suggestions in validation system
-3. ✅ **Natural language data search**: NaturalLanguageQuery component with example queries
-4. ✅ **Natural language data modification**: `/api/nl-modify` route with undo/redo/history
-5. ✅ **AI-suggested data corrections**: `/api/ai-fix` route with 1-click fixes
-6. ✅ **Natural Language to Rule Converter**: NLRuleInput component with AI-powered conversion
-7. ✅ **AI Rule Recommendations**: AI-powered rule suggestions and conflict detection
+1. ✅ **Smart header mapping**: AI column mapping (`/src/app/api/ai-column-mapping/route.ts`)
+2. ✅ **AI-based validations beyond the 12 rules**: Advanced AI suggestions (`/src/app/api/ai-fix/route.ts`)
+3. ✅ **Natural language data search**: NaturalLanguageQuery component (`/src/components/NaturalLanguageQuery.tsx`)
+4. ✅ **Natural language data modification**: NL modification with undo/redo (`/src/app/api/nl-modify/route.ts`, `/src/components/NLDataModifier.tsx`)
+5. ✅ **AI-suggested data corrections**: 1-click AI fixes (`/src/app/api/ai-fix/route.ts`, `/src/components/IssuesSidebar.tsx`)
+6. ✅ **Natural Language to Rule Converter**: AI-powered rule generation (`/src/components/NLRuleInput.tsx`)
+7. ✅ **AI Rule Recommendations**: AI rule suggestions and conflict detection (`/src/validators/validateConflictingRules.ts`)
 
 ## 📁 Sample Data Structure
-Sample data files located in `/sample/` directory:
-- `/sample/Sample-clients.csv`
-- `/sample/Sample-workers.csv` 
-- `/sample/Sample-tasks.csv`
-- `/sample/business-rules.json`
+Sample data files located in `/public/sample/` directory:
+- `/public/sample/Sample-clients.csv`
+- `/public/sample/Sample-workers.csv` 
+- `/public/sample/Sample-tasks.csv`
+- `/public/sample/business-rules.json`
 
 ## 🚀 Quick Start
 1. Clone the repository
