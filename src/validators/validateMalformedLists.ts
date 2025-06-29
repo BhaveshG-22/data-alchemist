@@ -31,7 +31,7 @@ export function validateMalformedLists(context: ValidatorContext): ValidationIss
                 `Invalid numeric list in ${column} at row ${i + 1}: ${result.error}`,
                 {
                   sheet: sheetName,
-                  row: i + 1,
+                  row: i,
                   column,
                   value,
                   type: 'error',
@@ -52,7 +52,7 @@ export function validateMalformedLists(context: ValidatorContext): ValidationIss
                   `Empty list in ${column} at row ${i + 1}`,
                   {
                     sheet: sheetName,
-                    row: i + 1,
+                    row: i,
                     column,
                     value,
                     type: 'warning',
@@ -72,5 +72,5 @@ export function validateMalformedLists(context: ValidatorContext): ValidationIss
 }
 
 function isNumericListColumn(column: string): boolean {
-  return ['RequestedTaskIDs', 'AvailableSlots'].includes(column);
+  return ['AvailableSlots'].includes(column);
 }

@@ -134,14 +134,20 @@ Issue Context:
 - Current Value: {currentValue}
 - Expected Format: {expectedFormat}
 
-Task: Provide a specific solution to fix this data validation issue. Be very specific about the exact value to use.
+Task: Convert the invalid JSON string into a valid JSON object. Extract meaningful key-value pairs from the text content.
+
+Examples of good JSON conversions:
+- "name John age 30" → {"name": "John", "age": 30}
+- "status active priority high" → {"status": "active", "priority": "high"}
+- "location New York budget 50000" → {"location": "New York", "budget": 50000}
+- "category premium features advanced" → {"category": "premium", "features": "advanced"}
 
 Response format:
-💡 **Fix**: [Exact value or format to use - be specific, e.g. "3" for priority, "[1,2,3]" for arrays]
+💡 **Fix**: [Valid JSON object - no quotes around the entire object]
 📊 **Explanation**: [Why this fix works]
 ✅ **Example**: [Show correct format with example]
 
-Important: The Fix section should contain the EXACT value that should replace the current value.
+CRITICAL: The Fix section must contain ONLY the valid JSON object without any wrapping quotes or additional text.
 
 Solution:`,
 
@@ -385,7 +391,7 @@ export async function POST(request: NextRequest) {
       // Data/row-specific variables (for other templates)
       column: sanitizeValue(issue.column || 'Unknown'),
       row: sanitizeValue(issue.row !== undefined ? (issue.row + 1).toString() : 'Unknown'),
-      currentValue: sanitizeValue(sampleData?.currentValue || 'Empty'),
+      currentValue: sanitizeValue(issue.value || sampleData?.currentValue || 'Empty'),
       expectedFormat: sanitizeValue(fileContext?.dataTypes?.[issue.column as keyof typeof fileContext.dataTypes] || 'As per requirements'),
       dataType: sanitizeValue(fileContext?.dataTypes?.[issue.column as keyof typeof fileContext.dataTypes] || 'Standard format'),
     };

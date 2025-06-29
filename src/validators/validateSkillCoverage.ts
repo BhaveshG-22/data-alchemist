@@ -15,6 +15,7 @@ export function validateSkillCoverage(context: ValidatorContext): ValidationIssu
       skills
         .split(',')
         .map(skill => skill.trim().toLowerCase())
+        .filter(Boolean)
         .forEach(skill => availableSkills.add(skill));
     }
   }
@@ -22,6 +23,7 @@ export function validateSkillCoverage(context: ValidatorContext): ValidationIssu
   // Check every RequiredSkill in tasks
   for (let i = 0; i < data.tasks.rows.length; i++) {
     const row = data.tasks.rows[i];
+    const taskID = getColumnValue(row, 'TaskID') as string;
     const skills = getColumnValue(row, 'RequiredSkills');
 
     if (skills && typeof skills === 'string') {
@@ -32,17 +34,18 @@ export function validateSkillCoverage(context: ValidatorContext): ValidationIssu
 
       for (const skill of requiredList) {
         if (!availableSkills.has(skill)) {
+          const taskInfo = taskID ? ` (${taskID})` : '';
           issues.push(
             createValidationIssue(
               'skill_coverage',
-              `Required skill '${skill}' in task at row ${i + 1} is not available in any worker`,
+              `No worker has the skill "${skill}" required by task${taskInfo}`,
               {
                 sheet: 'tasks',
                 row: i + 1,
                 column: 'RequiredSkills',
                 value: skill,
-                type: 'warning',
-                suggestion: `Add a worker with '${skill}' skill or remove this task requirement`,
+                type: 'error',
+                suggestion: `Add a worker with the "${skill}" skill or update the task requirements`,
                 fixable: false,
               }
             )

@@ -56,6 +56,7 @@ export default function RuleInputUI({
 }: RuleInputUIProps) {
   const [isAddingRule, setIsAddingRule] = useState(false);
   const [editingRule, setEditingRule] = useState<string | null>(null);
+  const [showConflicts, setShowConflicts] = useState(false);
   const [formData, setFormData] = useState<RuleFormData>({
     type: 'coRun',
     description: '',
@@ -80,7 +81,7 @@ export default function RuleInputUI({
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const ruleTypeLabels = {
-    coRun: 'Co-Run Tasks',
+    coRun: 'Co-Run Groups',
     slotRestriction: 'Slot Restriction',
     loadLimit: 'Load Limit',
     phaseWindow: 'Phase Window',
@@ -98,16 +99,58 @@ export default function RuleInputUI({
   };
 
   const ruleTypeDescriptions = {
-    coRun: 'Tasks that must be scheduled to run at the same time',
-    slotRestriction: 'Minimum common time slots required for groups',
-    loadLimit: 'Maximum workload per phase for worker groups',
-    phaseWindow: 'Allowed phases or time windows for specific tasks',
-    patternMatch: 'Custom rules based on regex patterns',
-    precedenceOverride: 'Priority overrides for rule conflicts'
+    coRun: 'Select 2+ TaskIDs that must run together at the same time',
+    slotRestriction: 'Choose ClientGroup or WorkerGroup + minimum common slots',
+    loadLimit: 'Select WorkerGroup + maximum slots per phase limit',
+    phaseWindow: 'Pick TaskID + allowed phase list or range',
+    patternMatch: 'Enter regex + choose rule template + parameters',
+    precedenceOverride: 'Define global vs specific rules with explicit priority order'
   };
 
   const phaseOptions = ['Phase 1', 'Phase 2', 'Phase 3', 'Phase 4', 'Phase 5'];
   const ruleTemplates = ['custom', 'resource-constraint', 'time-dependency', 'skill-requirement'];
+
+  // Detect potential conflicts between rules
+  const detectConflicts = (): Array<{id: string; message: string; severity: 'warning' | 'error'}> => {
+    const conflicts: Array<{id: string; message: string; severity: 'warning' | 'error'}> = [];
+    const activeRules = rules.filter(r => r.active);
+
+    // Check for coRun conflicts with phaseWindow
+    activeRules.forEach(rule1 => {
+      if (rule1.type === 'coRun' && rule1.tasks) {
+        activeRules.forEach(rule2 => {
+          if (rule2.type === 'phaseWindow' && rule2.taskId && rule1.tasks!.includes(rule2.taskId)) {
+            const phaseList = rule2.allowedPhases || (rule2.phaseRange ? 
+              Array.from({length: rule2.phaseRange.end - rule2.phaseRange.start + 1}, 
+                        (_, i) => `Phase ${rule2.phaseRange!.start + i}`) : []);
+            conflicts.push({
+              id: `${rule1.id}-${rule2.id}`,
+              message: `Co-run task ${rule2.taskId} is restricted to phases [${phaseList.join(', ')}] which may conflict with other tasks in the co-run group`,
+              severity: 'warning'
+            });
+          }
+        });
+      }
+    });
+
+    // Check for duplicate coRun groups
+    const coRunGroups = activeRules.filter(r => r.type === 'coRun' && r.tasks);
+    for (let i = 0; i < coRunGroups.length; i++) {
+      for (let j = i + 1; j < coRunGroups.length; j++) {
+        const group1 = coRunGroups[i].tasks!.sort();
+        const group2 = coRunGroups[j].tasks!.sort();
+        if (JSON.stringify(group1) === JSON.stringify(group2)) {
+          conflicts.push({
+            id: `${coRunGroups[i].id}-${coRunGroups[j].id}`,
+            message: `Duplicate co-run group found: [${group1.join(', ')}]`,
+            severity: 'error'
+          });
+        }
+      }
+    }
+
+    return conflicts;
+  };
 
   const resetForm = () => {
     setFormData({
@@ -269,7 +312,9 @@ export default function RuleInputUI({
         usePhaseRange: !!rule.phaseRange,
         pattern: rule.pattern || '',
         ruleTemplate: rule.ruleTemplate || 'custom',
-        parameters: rule.parameters || {},
+        parameters: rule.parameters ? Object.fromEntries(
+          Object.entries(rule.parameters).map(([key, value]) => [key, String(value)])
+        ) : {},
         scope: rule.scope || 'global',
         overrides: rule.overrides || []
       });
@@ -360,41 +405,85 @@ export default function RuleInputUI({
   };
 
   const handleGenerateRulesConfig = () => {
+    // Convert to clean format matching the specification
+    const cleanRules = rules.filter(rule => rule.active).map(rule => {
+      const baseRule: any = {
+        type: rule.type,
+        ...(rule.description && { description: rule.description }),
+        ...(rule.priority && rule.priority !== 1 && { priority: rule.priority })
+      };
+
+      // Add type-specific properties in clean format
+      switch (rule.type) {
+        case 'coRun':
+          return { ...baseRule, tasks: rule.tasks };
+        
+        case 'slotRestriction':
+          return { 
+            ...baseRule, 
+            group: rule.targetGroup,
+            groupType: rule.groupType,
+            minCommonSlots: rule.minCommonSlots 
+          };
+        
+        case 'loadLimit':
+          return { 
+            ...baseRule, 
+            group: rule.workerGroup,
+            maxSlotsPerPhase: rule.maxSlotsPerPhase 
+          };
+        
+        case 'phaseWindow':
+          return { 
+            ...baseRule, 
+            task: rule.taskId,
+            ...(rule.phaseRange 
+              ? { phaseRange: rule.phaseRange }
+              : { phases: rule.allowedPhases?.map(p => parseInt(p.replace('Phase ', ''))) || [] }
+            )
+          };
+        
+        case 'patternMatch':
+          return { 
+            ...baseRule, 
+            pattern: rule.pattern,
+            template: rule.ruleTemplate,
+            ...(rule.parameters && Object.keys(rule.parameters).length > 0 && { params: rule.parameters })
+          };
+        
+        case 'precedenceOverride':
+          return { 
+            ...baseRule, 
+            scope: rule.scope,
+            ...(rule.overrides && rule.overrides.length > 0 && { order: rule.overrides })
+          };
+        
+        default:
+          return baseRule;
+      }
+    });
+
     const rulesConfig = {
       version: "1.0",
       generated: new Date().toISOString(),
-      rules: rules.map(rule => ({
-        id: rule.id,
-        type: rule.type,
-        description: rule.description,
-        active: rule.active,
-        priority: rule.priority,
-        ...(rule.tasks && { tasks: rule.tasks }),
-        ...(rule.targetGroup && { targetGroup: rule.targetGroup }),
-        ...(rule.groupType && { groupType: rule.groupType }),
-        ...(rule.minCommonSlots && { minCommonSlots: rule.minCommonSlots }),
-        ...(rule.workerGroup && { workerGroup: rule.workerGroup }),
-        ...(rule.maxSlotsPerPhase && { maxSlotsPerPhase: rule.maxSlotsPerPhase }),
-        ...(rule.taskId && { taskId: rule.taskId }),
-        ...(rule.allowedPhases && { allowedPhases: rule.allowedPhases }),
-        ...(rule.phaseRange && { phaseRange: rule.phaseRange }),
-        ...(rule.pattern && { pattern: rule.pattern }),
-        ...(rule.ruleTemplate && { ruleTemplate: rule.ruleTemplate }),
-        ...(rule.parameters && { parameters: rule.parameters }),
-        ...(rule.scope && { scope: rule.scope }),
-        ...(rule.overrides && { overrides: rule.overrides })
-      }))
+      rules: cleanRules
     };
 
+    // Create and download the file
     const blob = new Blob([JSON.stringify(rulesConfig, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'business-rules-config.json';
+    a.download = 'rules.json';
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+
+    // Show success message
+    console.log('✅ Rules configuration exported successfully!');
+    console.log('📁 File: rules.json');
+    console.log('📊 Active rules exported:', cleanRules.length);
   };
 
   const renderFormFields = () => {
@@ -713,8 +802,19 @@ export default function RuleInputUI({
             </p>
           </div>
           <div className="flex items-center space-x-3">
-            <div className="text-sm text-gray-500">
-              {rules.length} rule{rules.length !== 1 ? 's' : ''} defined
+            <div className="flex items-center space-x-4">
+              <div className="text-sm text-gray-500">
+                {rules.length} rule{rules.length !== 1 ? 's' : ''} defined
+              </div>
+              {detectConflicts().length > 0 && (
+                <button
+                  onClick={() => setShowConflicts(!showConflicts)}
+                  className="flex items-center space-x-1 text-sm text-amber-600 hover:text-amber-700"
+                >
+                  <span>⚠️</span>
+                  <span>{detectConflicts().length} conflict{detectConflicts().length !== 1 ? 's' : ''}</span>
+                </button>
+              )}
             </div>
             {rules.length > 0 && (
               <button
@@ -739,6 +839,48 @@ export default function RuleInputUI({
       </div>
 
       <div className="p-6">
+        {/* Conflict Alerts */}
+        {showConflicts && detectConflicts().length > 0 && (
+          <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="text-md font-medium text-amber-900 flex items-center space-x-2">
+                <span>⚠️</span>
+                <span>Rule Conflicts Detected</span>
+              </h4>
+              <button
+                onClick={() => setShowConflicts(false)}
+                className="text-amber-600 hover:text-amber-800"
+              >
+                <FontAwesomeIcon icon={faTimes} className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="space-y-2">
+              {detectConflicts().map(conflict => (
+                <div
+                  key={conflict.id}
+                  className={`p-3 rounded-lg text-sm ${
+                    conflict.severity === 'error'
+                      ? 'bg-red-100 text-red-800 border border-red-200'
+                      : 'bg-yellow-100 text-yellow-800 border border-yellow-200'
+                  }`}
+                >
+                  <div className="flex items-start space-x-2">
+                    <span className="text-lg">
+                      {conflict.severity === 'error' ? '🚫' : '⚠️'}
+                    </span>
+                    <div>
+                      <div className="font-medium">
+                        {conflict.severity === 'error' ? 'Error' : 'Warning'}
+                      </div>
+                      <div>{conflict.message}</div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Add/Edit Rule Form */}
         {isAddingRule && (
           <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
@@ -750,22 +892,22 @@ export default function RuleInputUI({
               {/* Rule Type Selection */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Rule Type</label>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 gap-2">
                   {Object.entries(ruleTypeLabels).map(([type, label]) => (
                     <button
                       key={type}
                       onClick={() => setFormData(prev => ({ ...prev, type: type as BusinessRule['type'] }))}
-                      className={`p-3 text-left border rounded-lg transition-colors ${
+                      className={`p-2 text-left border rounded-md transition-colors ${
                         formData.type === type
                           ? 'border-blue-500 bg-blue-50 text-blue-900'
                           : 'border-gray-200 hover:border-gray-300'
                       }`}
                     >
                       <div className="flex items-center space-x-2">
-                        <span className="text-lg">{ruleTypeIcons[type as BusinessRule['type']]}</span>
+                        <span className="text-sm">{ruleTypeIcons[type as BusinessRule['type']]}</span>
                         <div>
                           <div className="font-medium text-sm">{label}</div>
-                          <div className="text-xs text-gray-600 mt-1">
+                          <div className="text-xs text-gray-500 leading-tight">
                             {ruleTypeDescriptions[type as BusinessRule['type']]}
                           </div>
                         </div>

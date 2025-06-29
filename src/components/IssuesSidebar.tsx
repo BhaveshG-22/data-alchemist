@@ -233,10 +233,71 @@ export default function IssuesSidebar({ issues, parsedData, activeTab, onIssueCl
     }
   };
 
+  const formatAISuggestion = (suggestion: string) => {
+    // Split the suggestion into lines and process each one
+    const lines = suggestion.split('\n').filter(line => line.trim());
+    
+    return lines.map((line, index) => {
+      const trimmedLine = line.trim();
+      
+      // Handle emoji + bold headers (💡 **Fix**: content)
+      const emojiHeaderMatch = trimmedLine.match(/^([💡🔗📋📊📝✅⚠️🎯⚖️👥♻️📈🔧]+)\s*\*\*([^*]+)\*\*:\s*(.*)$/);
+      if (emojiHeaderMatch) {
+        const [, emoji, title, content] = emojiHeaderMatch;
+        return (
+          <div key={index} className="mb-2">
+            <div className="flex items-start space-x-2">
+              <span className="text-sm">{emoji}</span>
+              <div className="flex-1">
+                <span className="font-semibold text-gray-800 text-sm">{title}:</span>
+                <span className="text-gray-700 text-sm ml-1">{content}</span>
+              </div>
+            </div>
+          </div>
+        );
+      }
+      
+      // Handle bold headers without emoji (**Title**: content)
+      const boldHeaderMatch = trimmedLine.match(/^\*\*([^*]+)\*\*:\s*(.*)$/);
+      if (boldHeaderMatch) {
+        const [, title, content] = boldHeaderMatch;
+        return (
+          <div key={index} className="mb-2">
+            <span className="font-semibold text-gray-800 text-sm">{title}:</span>
+            <span className="text-gray-700 text-sm ml-1">{content}</span>
+          </div>
+        );
+      }
+      
+      // Handle lines that start with emoji but no bold
+      const emojiLineMatch = trimmedLine.match(/^([💡🔗📋📊📝✅⚠️🎯⚖️👥♻️📈🔧]+)\s*(.*)$/);
+      if (emojiLineMatch) {
+        const [, emoji, content] = emojiLineMatch;
+        return (
+          <div key={index} className="mb-1 flex items-start space-x-2">
+            <span className="text-sm">{emoji}</span>
+            <span className="text-gray-700 text-sm">{content}</span>
+          </div>
+        );
+      }
+      
+      // Regular text lines
+      if (trimmedLine) {
+        return (
+          <div key={index} className="text-gray-700 text-sm mb-1">
+            {trimmedLine}
+          </div>
+        );
+      }
+      
+      return null;
+    }).filter(Boolean);
+  };
+
   const currentData = parsedData[activeTab];
 
   return (
-    <div className="w-80 bg-white border-l border-gray-200 flex flex-col h-screen">
+    <div className="w-80 bg-white border-l border-gray-200 flex flex-col sticky top-0 h-[calc(100vh-88px)] shadow-lg z-10">
       {/* Header - Fixed */}
       <div className="flex-shrink-0 p-4 border-b border-gray-200 bg-gray-50">
         <h3 className="text-lg font-semibold text-gray-900 mb-2">Validation Issues</h3>
@@ -419,8 +480,8 @@ export default function IssuesSidebar({ issues, parsedData, activeTab, onIssueCl
                             {/* AI Suggestion */}
                             {aiSuggestions[globalIndex] && (
                               <div className="border-t border-gray-100 bg-gradient-to-r from-purple-50 to-blue-50 p-3">
-                                <div className="text-xs text-gray-700 whitespace-pre-line mb-3">
-                                  {aiSuggestions[globalIndex]}
+                                <div className="mb-3">
+                                  {formatAISuggestion(aiSuggestions[globalIndex])}
                                 </div>
                                 
                                 {/* Action Buttons */}

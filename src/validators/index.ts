@@ -23,10 +23,10 @@ const VALIDATORS = [
   validateJSONFields,  // DONE
   validateReferences, // DONE
   validateCircularCoRun,
-  // // validateConflictingRules,
-  // // validateOverloadedWorkers,
-  // // validatePhaseSaturation,
-  // validateSkillCoverage,
+  validateConflictingRules,
+  // validateOverloadedWorkers,
+  // validatePhaseSaturation,
+  validateSkillCoverage,
   // validateConcurrencyFeasibility,
 ];
 

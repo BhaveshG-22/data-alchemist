@@ -22,9 +22,10 @@ interface TabbedDataViewProps {
   hoveredCell?: { row: number; column: string; issueType?: 'error' | 'warning' | 'info'; category?: string } | null;
   onHighlightComplete?: () => void;
   targetRow?: number;
+  recentlyUpdatedCells?: Array<{ sheet: string; row: number; column: string; timestamp: number }>;
 }
 
-export default function TabbedDataView({ parsedData, errors, onDataChange, onTabChange, highlightedCells, highlightedHeaders, hoveredCell, onHighlightComplete, targetRow }: TabbedDataViewProps) {
+export default function TabbedDataView({ parsedData, errors, onDataChange, onTabChange, highlightedCells, highlightedHeaders, hoveredCell, onHighlightComplete, targetRow, recentlyUpdatedCells }: TabbedDataViewProps) {
   const [activeTab, setActiveTab] = useState<'clients' | 'workers' | 'tasks'>('clients');
 
   const handleTabChange = (tab: 'clients' | 'workers' | 'tasks') => {
@@ -114,6 +115,7 @@ export default function TabbedDataView({ parsedData, errors, onDataChange, onTab
               hoveredCell={hoveredCell}
               onHighlightComplete={onHighlightComplete}
               targetRow={targetRow}
+              recentlyUpdatedCells={recentlyUpdatedCells?.filter(cell => cell.sheet === activeTab)}
             />
           </div>
         ) : (

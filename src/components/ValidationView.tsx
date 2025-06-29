@@ -13,6 +13,10 @@ import {
   ParsedData as ValidatedParsedData,
   BusinessRule
 } from '@/validators';
+import { toast, ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+import Drawer from 'react-modern-drawer';
+import 'react-modern-drawer/dist/index.css';
 
 interface ValidationViewProps {
   uploadedFiles: {
@@ -69,8 +73,48 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
   const [hoveredIssue, setHoveredIssue] = useState<{ row: number; column: string; issueType?: 'error' | 'warning' | 'info'; category?: string } | null>(null);
   const [hoverTimeout, setHoverTimeout] = useState<NodeJS.Timeout | null>(null);
   const [targetRow, setTargetRow] = useState<number | undefined>(undefined);
+  const [recentlyUpdatedCells, setRecentlyUpdatedCells] = useState<Array<{ sheet: string; row: number; column: string; timestamp: number }>>([]);
+
+  // Reset targetRow when component mounts and scroll to top to prevent unwanted navigation
+  useEffect(() => {
+    setTargetRow(undefined);
+    // Scroll to top when validation view loads
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
+
+  // Reset targetRow when switching tabs to prevent unwanted navigation
+  useEffect(() => {
+    setTargetRow(undefined);
+  }, [activeTab]);
+
+  // Helper function to mark a cell as recently updated
+  const markCellAsUpdated = useCallback((sheet: string, row: number, column: string) => {
+    const timestamp = Date.now();
+    setRecentlyUpdatedCells(prev => {
+      // Remove any existing entry for this cell and add new one
+      const filtered = prev.filter(cell => !(cell.sheet === sheet && cell.row === row && cell.column === column));
+      return [...filtered, { sheet, row, column, timestamp }];
+    });
+
+    // Auto-remove after 5 seconds
+    setTimeout(() => {
+      setRecentlyUpdatedCells(prev =>
+        prev.filter(cell => !(cell.sheet === sheet && cell.row === row && cell.column === column && cell.timestamp === timestamp))
+      );
+    }, 5000);
+  }, []);
+
+  // Clean up old recently updated cells periodically
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const now = Date.now();
+      setRecentlyUpdatedCells(prev => prev.filter(cell => now - cell.timestamp < 5000));
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, []);
   const [businessRules, setBusinessRules] = useState<BusinessRule[]>([]);
-  const [showRuleInput, setShowRuleInput] = useState(false);
+  const [showRuleDrawer, setShowRuleDrawer] = useState(false);
   const [showColumnMappingDialog, setShowColumnMappingDialog] = useState(false);
   const [columnMappingSuggestions, setColumnMappingSuggestions] = useState<{
     mappings: Array<{ originalHeader: string; suggestedHeader: string; confidence: number; reasoning: string }>;
@@ -350,9 +394,11 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
       });
       setParsingComplete(true);
       setLoading(false);
+      setTargetRow(undefined); // Clear target row after parsing
     } else {
       setValidationIssues(allIssues);
       setLoading(false);
+      setTargetRow(undefined); // Clear target row after validation
     }
   }, [uploadedFiles, validateData, getColumnMappingSuggestions, applyColumnMappings]);
 
@@ -365,6 +411,7 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
     if (parsedData.clients || parsedData.workers || parsedData.tasks) {
       const allIssues = validateData(parsedData, businessRules);
       setValidationIssues(allIssues);
+      setTargetRow(undefined); // Clear target row after re-validation
     }
   }, [businessRules, parsedData, validateData]);
 
@@ -391,16 +438,18 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
   };
 
   const handleIssueClick = (issue: ValidationIssue) => {
-    console.log('Issue clicked:', issue);
+    console.log('🎯 Issue clicked:', issue);
 
-    // Clear any existing timeout
+    // Clear any existing timeout and dismiss toasts
     if (hoverTimeout) {
       clearTimeout(hoverTimeout);
       setHoverTimeout(null);
     }
+    toast.dismiss();
 
     // Switch to the relevant tab first if needed
     if (issue.sheet && issue.sheet !== activeTab) {
+      console.log(`🔄 Switching to ${issue.sheet} sheet`);
       setActiveTab(issue.sheet as 'clients' | 'workers' | 'tasks');
     }
 
@@ -419,8 +468,18 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
     }
     // Handle regular cell highlighting and navigation
     else if (issue.row !== undefined && issue.column) {
+      console.log(`🧭 Navigating to row ${issue.row + 1}, column ${issue.column}`)
+
       // Navigate to the page containing this row
-      setTargetRow(issue.row);
+      if (issue.sheet && issue.sheet !== activeTab) {
+        // Different sheet - wait for tab switch then set target
+        setTimeout(() => {
+          setTargetRow(issue.row);
+        }, 100);
+      } else {
+        // Same sheet - immediate navigation
+        setTargetRow(issue.row);
+      }
 
       setHoveredIssue({
         row: issue.row,
@@ -449,46 +508,710 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
 
     // Only highlight if the issue has a specific row and column
     if (issue.row !== undefined && issue.column) {
-      setHoveredIssue({
-        row: issue.row,
-        column: issue.column,
-        issueType: issue.type,
-        category: issue.category
-      });
+      const rowsPerPage = 15; // Standard pagination size
+      const targetPage = Math.ceil((issue.row + 1) / rowsPerPage);
+      const isCurrentSheet = issue.sheet === activeTab;
 
-      // Set timeout to auto-remove hover after 4 seconds
-      const timeoutId = setTimeout(() => {
-        setHoveredIssue(null);
-        setHoverTimeout(null);
-      }, 4000);
+      // Always highlight immediately for same sheet issues
+      if (isCurrentSheet) {
+        setHoveredIssue({
+          row: issue.row,
+          column: issue.column,
+          issueType: issue.type,
+          category: issue.category
+        });
 
-      setHoverTimeout(timeoutId);
+        // Auto-scroll to the cell if it's not visible, regardless of page
+        const scrollToCellIfNeeded = () => {
+          console.log(`🔍 Looking for cell at row ${issue.row}, column ${issue.column} on sheet ${issue.sheet}`);
+
+          // Try multiple selectors to find the cell in the DOM
+          const cellSelector1 = `[data-row="${issue.row}"][data-column="${issue.column}"]`;
+          const cellSelector2 = `[data-cell-id="cell-${issue.row}-${issue.column}"]`;
+
+          console.log(`🔍 Using selectors: ${cellSelector1} or ${cellSelector2}`);
+
+          let cellElement = document.querySelector(cellSelector1);
+          if (!cellElement) {
+            cellElement = document.querySelector(cellSelector2);
+          }
+          console.log(`🔍 Cell element found:`, cellElement);
+
+          if (cellElement) {
+            // Get the main content area that contains the scrollable table
+            // Try multiple approaches to find the scrollable container
+            let mainContentArea = cellElement.closest('.overflow-y-auto, .overflow-auto');
+
+            // If no overflow container found, try data table specific selectors
+            if (!mainContentArea) {
+              const dataTableContainer = cellElement.closest('[class*="rdt_Table"]');
+              mainContentArea = dataTableContainer?.closest('.overflow-y-auto, .overflow-auto') || null;
+            }
+
+            // If still not found, look for the main validation view container
+            if (!mainContentArea) {
+              mainContentArea = document.querySelector('.flex-1.p-6.space-y-6.overflow-y-auto');
+            }
+
+            console.log(`🔍 Main content area:`, mainContentArea, 'Found via:',
+              cellElement.closest('.overflow-y-auto, .overflow-auto') ? 'direct parent' :
+                cellElement.closest('[class*="rdt_Table"]')?.closest('.overflow-y-auto, .overflow-auto') ? 'data table parent' :
+                  'document query');
+
+            if (mainContentArea) {
+              // Check if cell is visible within the scrollable container
+              const cellRect = cellElement.getBoundingClientRect();
+              const containerRect = mainContentArea.getBoundingClientRect();
+
+              console.log(`🔍 Cell rect:`, cellRect);
+              console.log(`🔍 Container rect:`, containerRect);
+
+              // More comprehensive visibility detection
+              const isVisibleVertically = cellRect.top >= containerRect.top && cellRect.bottom <= containerRect.bottom;
+              const isVisibleHorizontally = cellRect.left >= containerRect.left && cellRect.right <= containerRect.right;
+              const isVisible = isVisibleVertically && isVisibleHorizontally;
+
+              // Determine scroll position based on cell location relative to container
+              const isCellAbove = cellRect.bottom < containerRect.top;
+              const isCellBelow = cellRect.top > containerRect.bottom;
+              const isCellLeft = cellRect.right < containerRect.left;
+              const isCellRight = cellRect.left > containerRect.right;
+
+              console.log(`🔍 Cell visibility:`, {
+                isVisible,
+                isVisibleVertically,
+                isVisibleHorizontally,
+                isCellAbove,
+                isCellBelow,
+                isCellLeft,
+                isCellRight,
+                cellRect: { top: cellRect.top, bottom: cellRect.bottom, left: cellRect.left, right: cellRect.right },
+                containerRect: { top: containerRect.top, bottom: containerRect.bottom, left: containerRect.left, right: containerRect.right }
+              });
+
+              if (!isVisible) {
+                console.log(`🔄 Auto-scrolling to cell at row ${issue.row !== undefined ? issue.row + 1 : 'unknown'}, column ${issue.column}`);
+
+                // Determine the best scroll position based on where the cell is located
+                let scrollPosition: 'start' | 'center' | 'end' | 'nearest';
+
+                if (isCellBelow) {
+                  scrollPosition = 'end';  // Cell is below viewport, scroll to bottom
+                } else if (isCellAbove) {
+                  scrollPosition = 'start'; // Cell is above viewport, scroll to top
+                } else {
+                  scrollPosition = 'center'; // Cell is partially visible or to the side, center it
+                }
+
+                console.log(`🔍 Scroll direction: ${isCellBelow ? 'below (end)' : isCellAbove ? 'above (start)' : 'side/partial (center)'}, using scroll position: ${scrollPosition}`);
+
+                // Add a subtle visual indicator that scrolling is happening
+                toast.info(`📍 Scrolling to row ${issue.row !== undefined ? issue.row + 1 : 'unknown'}`, {
+                  position: "bottom-right",
+                  autoClose: 2000,
+                  hideProgressBar: true,
+                  closeOnClick: true,
+                  pauseOnHover: false,
+                  draggable: false,
+                  toastId: `scroll-${issue.row}-${issue.column}`,
+                });
+
+                // Scroll within the container with the determined scroll position
+                cellElement.scrollIntoView({
+                  behavior: 'smooth',
+                  block: scrollPosition,
+                  inline: 'center'
+                });
+              } else {
+                console.log(`✅ Cell is already visible, no scrolling needed`);
+              }
+            } else {
+              // Enhanced fallback to viewport scrolling with better container detection
+              console.log(`🔍 No scrollable container found via closest(), trying alternative approaches`);
+
+              // Try to find any scrollable container in the document that might contain our cell
+              const potentialContainers = document.querySelectorAll('.overflow-y-auto, .overflow-auto, [style*="overflow"]');
+              let bestContainer = null;
+
+              for (const container of potentialContainers) {
+                if (container.contains(cellElement)) {
+                  bestContainer = container;
+                  console.log(`🔍 Found containing scrollable element:`, container);
+                  break;
+                }
+              }
+
+              if (bestContainer) {
+                // Use the found container instead of viewport
+                const cellRect = cellElement.getBoundingClientRect();
+                const containerRect = bestContainer.getBoundingClientRect();
+
+                const isVisibleVertically = cellRect.top >= containerRect.top && cellRect.bottom <= containerRect.bottom;
+                const isVisibleHorizontally = cellRect.left >= containerRect.left && cellRect.right <= containerRect.right;
+                const isVisible = isVisibleVertically && isVisibleHorizontally;
+
+                const isCellAbove = cellRect.bottom < containerRect.top;
+                const isCellBelow = cellRect.top > containerRect.bottom;
+
+                console.log(`🔍 Using alternative container - Cell visibility:`, {
+                  isVisible,
+                  isCellAbove,
+                  isCellBelow
+                });
+
+                if (!isVisible) {
+                  const scrollPosition: 'start' | 'center' | 'end' | 'nearest' = isCellBelow ? 'end' : isCellAbove ? 'start' : 'center';
+
+                  console.log(`🔄 Alternative container scroll at row ${issue.row !== undefined ? issue.row + 1 : 'unknown'}, position: ${scrollPosition}`);
+
+                  toast.info(`📍 Scrolling to row ${issue.row !== undefined ? issue.row + 1 : 'unknown'}`, {
+                    position: "bottom-right",
+                    autoClose: 2000,
+                    hideProgressBar: true,
+                    closeOnClick: true,
+                    pauseOnHover: false,
+                    draggable: false,
+                    toastId: `scroll-${issue.row}-${issue.column}`,
+                  });
+
+                  cellElement.scrollIntoView({
+                    behavior: 'smooth',
+                    block: scrollPosition,
+                    inline: 'center'
+                  });
+                } else {
+                  console.log(`✅ Cell is already visible in alternative container, no scrolling needed`);
+                }
+              } else {
+                // Final fallback to viewport scrolling
+                console.log(`🔍 No containing scrollable element found, using viewport scrolling`);
+                const rect = cellElement.getBoundingClientRect();
+
+                const isVisibleVertically = rect.top >= 0 && rect.bottom <= window.innerHeight;
+                const isVisibleHorizontally = rect.left >= 0 && rect.right <= window.innerWidth;
+                const isVisible = isVisibleVertically && isVisibleHorizontally;
+
+                const isCellAbove = rect.bottom < 0;
+                const isCellBelow = rect.top > window.innerHeight;
+
+                console.log(`🔍 Viewport visibility:`, {
+                  isVisible,
+                  isVisibleVertically,
+                  isVisibleHorizontally,
+                  isCellAbove,
+                  isCellBelow,
+                  windowHeight: window.innerHeight,
+                  cellTop: rect.top,
+                  cellBottom: rect.bottom
+                });
+
+                if (!isVisible) {
+                  const scrollPosition: 'start' | 'center' | 'end' | 'nearest' = isCellBelow ? 'end' : isCellAbove ? 'start' : 'center';
+
+                  console.log(`🔄 Viewport scroll at row ${issue.row !== undefined ? issue.row + 1 : 'unknown'}, position: ${scrollPosition}`);
+
+                  toast.info(`📍 Scrolling to row ${issue.row !== undefined ? issue.row + 1 : 'unknown'}`, {
+                    position: "bottom-right",
+                    autoClose: 2000,
+                    hideProgressBar: true,
+                    closeOnClick: true,
+                    pauseOnHover: false,
+                    draggable: false,
+                    toastId: `scroll-${issue.row}-${issue.column}`,
+                  });
+
+                  cellElement.scrollIntoView({
+                    behavior: 'smooth',
+                    block: scrollPosition,
+                    inline: 'nearest'
+                  });
+                } else {
+                  console.log(`✅ Cell is already visible in viewport, no scrolling needed`);
+                }
+              }
+            }
+          } else {
+            console.log(`❌ Cell not found with selectors ${cellSelector1} or ${cellSelector2}, checking all data-row elements`);
+            const allRowElements = document.querySelectorAll('[data-row]');
+            console.log(`🔍 Found ${allRowElements.length} elements with data-row attribute`);
+            allRowElements.forEach((el, index) => {
+              if (index < 5) { // Log first 5 for debugging
+                console.log(`  - Element ${index}: data-row="${el.getAttribute('data-row')}", data-column="${el.getAttribute('data-column')}"`);
+              }
+            });
+
+            // Cell not found, probably on different page - use existing navigation
+            console.log(`🧭 Using setTargetRow fallback for row ${issue.row}`);
+            setTargetRow(issue.row);
+          }
+        };
+
+        // Small delay to allow DOM to update - increased for better reliability
+        setTimeout(scrollToCellIfNeeded, 200);
+
+        // Fallback attempt if first one doesn't find the cell
+        setTimeout(() => {
+          const cellSelector1 = `[data-row="${issue.row}"][data-column="${issue.column}"]`;
+          const cellSelector2 = `[data-cell-id="cell-${issue.row}-${issue.column}"]`;
+          let cellElement = document.querySelector(cellSelector1);
+          if (!cellElement) {
+            cellElement = document.querySelector(cellSelector2);
+          }
+          if (!cellElement) {
+            console.log(`🔄 Fallback attempt: Cell still not found after 500ms, trying setTargetRow`);
+            setTargetRow(issue.row);
+          }
+        }, 500);
+
+        // If it's on a different page, show toast after delay
+        if (targetPage !== getCurrentPage()) {
+          const timeoutId = setTimeout(() => {
+            const navigateToIssue = () => {
+              if (issue.row !== undefined) {
+                console.log(`🧭 Navigating to page ${targetPage} for row ${issue.row + 1}`);
+                setTargetRow(issue.row);
+                toast.dismiss();
+              }
+            };
+
+            toast.info(
+              <div className="flex flex-col space-y-2">
+                <div className="font-medium text-gray-900">📍 Issue on Different Page</div>
+                <div className="text-sm text-gray-600">
+                  This issue is on <strong className="text-blue-700">page {targetPage}</strong>,
+                  row <strong className="text-blue-700">{issue.row !== undefined ? issue.row + 1 : 'unknown'}</strong>,
+                  column <strong className="text-blue-700">{issue.column}</strong>
+                </div>
+                <button
+                  onClick={navigateToIssue}
+                  className="mt-2 bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700 transition-colors self-start"
+                >
+                  🧭 Go to Page {targetPage}
+                </button>
+              </div>,
+              {
+                position: "top-center",
+                autoClose: 6000,
+                hideProgressBar: false,
+                closeOnClick: false,
+                pauseOnHover: true,
+                draggable: true,
+                toastId: `page-nav-${issue.row}-${issue.column}`,
+              }
+            );
+          }, 1500);
+
+          setHoverTimeout(timeoutId);
+        }
+      } else {
+        // For different sheet, show toast after delay
+        const timeoutId = setTimeout(() => {
+          const navigateToIssue = () => {
+            if (issue.row !== undefined) {
+              console.log(`🧭 Navigating to ${issue.sheet} sheet, row ${issue.row + 1}, page ${targetPage}`);
+
+              if (issue.sheet && issue.sheet !== activeTab) {
+                setActiveTab(issue.sheet as 'clients' | 'workers' | 'tasks');
+              }
+
+              setTimeout(() => {
+                setTargetRow(issue.row);
+              }, 100);
+
+              toast.dismiss();
+            }
+          };
+
+          toast.info(
+            <div className="flex flex-col space-y-2">
+              <div className="font-medium text-gray-900">📍 Issue on Different Sheet</div>
+              <div className="text-sm text-gray-600">
+                This issue is in <strong className="text-blue-700">{issue.sheet}</strong> sheet,
+                row <strong className="text-blue-700">{issue.row !== undefined ? issue.row + 1 : 'unknown'}</strong>,
+                column <strong className="text-blue-700">{issue.column}</strong> (Page {targetPage})
+              </div>
+              <button
+                onClick={navigateToIssue}
+                className="mt-2 bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700 transition-colors self-start"
+              >
+                🧭 Go to {issue.sheet} Sheet
+              </button>
+            </div>,
+            {
+              position: "top-center",
+              autoClose: 8000,
+              hideProgressBar: false,
+              closeOnClick: false,
+              pauseOnHover: true,
+              draggable: true,
+              toastId: `sheet-nav-${issue.row}-${issue.column}-${issue.sheet}`,
+            }
+          );
+        }, 1500);
+
+        setHoverTimeout(timeoutId);
+      }
     }
   };
 
+  // Helper function to get current page (we'll need to track this)
+  const getCurrentPage = () => {
+    // This would need to be tracked from the data table component
+    // For now, assume page 1 as default
+    return 1;
+  };
+
   const handleIssueUnhover = () => {
-    // Clear any existing timeout
+    // Clear any existing timeout (including toast delay timeout)
     if (hoverTimeout) {
       clearTimeout(hoverTimeout);
       setHoverTimeout(null);
     }
 
     setHoveredIssue(null);
+    // Toast will persist if already shown and can be interacted with
   };
 
   const handleApplyAIFix = async (issue: ValidationIssue, aiSuggestion?: string) => {
-    console.log('AI fix not implemented for missing columns - this is a detection-only validation');
-    console.log('Issue:', issue);
+    console.log('AI fix requested for issue:', issue);
     console.log('AI suggestion:', aiSuggestion);
 
-    // For missing columns, we only detect and report - no auto-fixing
-    // Users should manually add the missing columns to their spreadsheet
+    if (!aiSuggestion) {
+      console.log('No AI suggestion provided');
+      return;
+    }
+
+    // Handle JSON field fixes
+    if (issue.category === 'json_fields' && issue.row !== undefined && issue.column && issue.sheet) {
+      try {
+        // Extract the JSON fix from the AI suggestion - try multiple patterns
+        let fixedValue = '';
+
+        // Pattern 1: 💡 **Fix**: {...}
+        let fixMatch = aiSuggestion.match(/💡\s*\*\*Fix\*\*:\s*(.+?)(?=\n\n|\n📊|\n✅|$)/);
+
+        // Pattern 2: "Fix": {...}
+        if (!fixMatch) {
+          fixMatch = aiSuggestion.match(/["\*]*Fix["\*]*:\s*(.+?)(?=\n\n|\n[📊✅]|$)/);
+        }
+
+        // Pattern 3: Look for any JSON object in the response (handle nested objects)
+        if (!fixMatch) {
+          const jsonRegex = /(\{(?:[^{}]|{[^{}]*})*\})/;
+          fixMatch = aiSuggestion.match(jsonRegex);
+        }
+
+        if (!fixMatch) {
+          console.error('Could not extract fix from AI suggestion:', aiSuggestion);
+          return;
+        }
+
+        fixedValue = fixMatch[1].trim();
+
+        // Remove quotes if they wrap the entire JSON
+        if (fixedValue.startsWith('"') && fixedValue.endsWith('"')) {
+          fixedValue = fixedValue.slice(1, -1);
+        }
+
+        // Validate the fixed JSON
+        try {
+          JSON.parse(fixedValue);
+        } catch (jsonError) {
+          console.error('AI suggested fix is not valid JSON:', fixedValue, 'Error:', jsonError);
+          return;
+        }
+
+        // Apply the fix to the data
+        const sheetName = issue.sheet as 'clients' | 'workers' | 'tasks';
+        const currentSheetData = parsedData[sheetName];
+
+        if (!currentSheetData) {
+          console.error('Sheet data not found:', sheetName);
+          return;
+        }
+
+        // Create a copy of the data with the fix applied
+        const updatedRows = [...currentSheetData.rows];
+        if (updatedRows[issue.row] && issue.column) {
+          updatedRows[issue.row] = {
+            ...updatedRows[issue.row],
+            [issue.column]: fixedValue
+          };
+        }
+
+        const updatedSheetData = {
+          ...currentSheetData,
+          rows: updatedRows
+        };
+
+        // Update the data using the existing handler
+        await handleDataChange(sheetName)(updatedSheetData);
+
+        // Mark cell as recently updated and clear hover state after a short delay
+        markCellAsUpdated(sheetName, issue.row, issue.column);
+
+        // Clear hover state after a brief moment to let user see the green background
+        setTimeout(() => {
+          setHoveredIssue(null);
+          if (hoverTimeout) {
+            clearTimeout(hoverTimeout);
+            setHoverTimeout(null);
+          }
+        }, 1000);
+
+        console.log(`✅ Applied AI fix to ${sheetName} sheet, row ${issue.row + 1}, column ${issue.column}`);
+      } catch (error) {
+        console.error('Error applying AI fix:', error);
+      }
+    }
+    // Handle malformed list fixes
+    else if (issue.category === 'malformed_lists' && issue.row !== undefined && issue.column && issue.sheet) {
+      try {
+        // Extract the list fix from the AI suggestion
+        let fixedValue = '';
+
+        // Pattern 1: 💡 **Fix**: [1,2,3] or "skill1,skill2,skill3"
+        let fixMatch = aiSuggestion.match(/💡\s*\*\*Fix\*\*:\s*(.+?)(?=\n\n|\n📝|\n✅|$)/);
+
+        // Pattern 2: Look for comma-separated values or arrays
+        if (!fixMatch) {
+          fixMatch = aiSuggestion.match(/["\*]*Fix["\*]*:\s*(.+?)(?=\n\n|\n[📝✅]|$)/);
+        }
+
+        // Pattern 3: Look for any array or comma-separated list in the response
+        if (!fixMatch) {
+          // First try to find array format
+          const arrayMatch = aiSuggestion.match(/(\[[^\]]+\])/);
+          if (arrayMatch) {
+            fixMatch = [arrayMatch[0], arrayMatch[1]];
+          } else {
+            // Then try comma-separated format
+            const commaMatch = aiSuggestion.match(/("?[a-zA-Z0-9_,\s-]+"?)/);
+            if (commaMatch) {
+              fixMatch = [commaMatch[0], commaMatch[1]];
+            }
+          }
+        }
+
+        if (!fixMatch) {
+          console.error('Could not extract fix from AI suggestion:', aiSuggestion);
+          return;
+        }
+
+        fixedValue = fixMatch[1].trim();
+
+        // Remove outer quotes if they wrap the entire value
+        if (fixedValue.startsWith('"') && fixedValue.endsWith('"')) {
+          fixedValue = fixedValue.slice(1, -1);
+        }
+
+        // Validate the fixed list based on column type
+        if (issue.column === 'AvailableSlots') {
+          // For numeric lists, validate as array or comma-separated numbers
+          if (fixedValue.startsWith('[') && fixedValue.endsWith(']')) {
+            try {
+              const parsed = JSON.parse(fixedValue);
+              if (!Array.isArray(parsed) || !parsed.every(item => typeof item === 'number')) {
+                console.error('AI suggested fix is not a valid numeric array:', fixedValue);
+                return;
+              }
+            } catch (parseError) {
+              console.error('AI suggested array fix is not valid JSON:', fixedValue);
+              return;
+            }
+          } else {
+            // Validate comma-separated format
+            const items = fixedValue.split(',').map(s => s.trim());
+            const hasInvalidNumbers = items.some(item => isNaN(Number(item)) || item === '');
+            if (hasInvalidNumbers) {
+              console.error('AI suggested fix contains invalid numbers:', fixedValue);
+              return;
+            }
+          }
+        }
+
+        // Apply the fix to the data
+        const sheetName = issue.sheet as 'clients' | 'workers' | 'tasks';
+        const currentSheetData = parsedData[sheetName];
+
+        if (!currentSheetData) {
+          console.error('Sheet data not found:', sheetName);
+          return;
+        }
+
+        // Create a copy of the data with the fix applied
+        const updatedRows = [...currentSheetData.rows];
+        if (updatedRows[issue.row] && issue.column) {
+          updatedRows[issue.row] = {
+            ...updatedRows[issue.row],
+            [issue.column]: fixedValue
+          };
+        }
+
+        const updatedSheetData = {
+          ...currentSheetData,
+          rows: updatedRows
+        };
+
+        // Update the data using the existing handler
+        await handleDataChange(sheetName)(updatedSheetData);
+
+        // Mark cell as recently updated and clear hover state after a short delay
+        markCellAsUpdated(sheetName, issue.row, issue.column);
+
+        // Clear hover state after a brief moment to let user see the green background
+        setTimeout(() => {
+          setHoveredIssue(null);
+          if (hoverTimeout) {
+            clearTimeout(hoverTimeout);
+            setHoverTimeout(null);
+          }
+        }, 1000);
+
+        console.log(`✅ Applied AI list fix to ${sheetName} sheet, row ${issue.row + 1}, column ${issue.column}`);
+      } catch (error) {
+        console.error('Error applying AI list fix:', error);
+      }
+    }
+    // Handle reference validation fixes
+    else if (issue.category === 'references' && issue.row !== undefined && issue.column && issue.sheet) {
+      try {
+        // Get the current value to understand what we're working with
+        const sheetName = issue.sheet as 'clients' | 'workers' | 'tasks';
+        const currentSheetData = parsedData[sheetName];
+
+        if (!currentSheetData) {
+          console.error('Sheet data not found:', sheetName);
+          return;
+        }
+
+        const currentValue = String(currentSheetData.rows[issue.row]?.[issue.column] || '');
+        console.log('Current value:', currentValue);
+        console.log('Invalid reference:', issue.value);
+
+        let fixedValue = '';
+
+        // Check if AI is suggesting removal of invalid reference
+        if (aiSuggestion.includes('Remove') && aiSuggestion.includes('invalid reference')) {
+          // Parse current comma-separated list and remove the invalid reference
+          const currentIds = currentValue.split(',').map((id: string) => id.trim()).filter(Boolean);
+
+          // Extract the specific invalid reference from the issue or AI suggestion
+          let invalidRef = String(issue.value || '');
+
+          // Try to extract invalid reference from AI suggestion if not in issue
+          if (!invalidRef) {
+            const refMatch = aiSuggestion.match(/['"]([^'"]+)['"]/);
+            if (refMatch) {
+              invalidRef = refMatch[1];
+            }
+          }
+
+          console.log('Current IDs:', currentIds);
+          console.log('Removing invalid reference:', invalidRef);
+
+          const validIds = currentIds.filter((id: string) => id !== invalidRef);
+          fixedValue = validIds.join(',');
+
+          console.log('Remaining valid IDs:', validIds);
+          console.log('Fixed value:', fixedValue);
+        } else {
+          // Try to extract replacement task IDs from AI suggestion
+          let fixMatch = aiSuggestion.match(/💡\s*\*\*Fix\*\*:\s*(.+?)(?=\n\n|\n🔗|\n📋|$)/);
+
+          // Pattern 2: Look for task ID lists
+          if (!fixMatch) {
+            fixMatch = aiSuggestion.match(/["\*]*Fix["\*]*:\s*(.+?)(?=\n\n|\n[🔗📋]|$)/);
+          }
+
+          // Pattern 3: Look for comma-separated task IDs in the response
+          if (!fixMatch) {
+            const taskIdMatch = aiSuggestion.match(/(T\d+(?:,T\d+)*)/);
+            if (taskIdMatch) {
+              fixMatch = [taskIdMatch[0], taskIdMatch[1]];
+            }
+          }
+
+          if (fixMatch) {
+            fixedValue = fixMatch[1].trim();
+
+            // Remove outer quotes if they wrap the entire value
+            if (fixedValue.startsWith('"') && fixedValue.endsWith('"')) {
+              fixedValue = fixedValue.slice(1, -1);
+            }
+
+            // If the fix contains removal instruction, parse and remove the invalid reference
+            if (fixedValue.includes('Remove') && (fixedValue.includes('invalid reference') || fixedValue.includes('invalid') || fixedValue.includes('reference'))) {
+              console.log('AI suggestion contains removal instruction, parsing to remove invalid reference');
+
+              // Extract the invalid reference from the fix instruction
+              let invalidRef = String(issue.value || '');
+              const refMatch = fixedValue.match(/['"]([^'"]+)['"]/);
+              if (refMatch) {
+                invalidRef = refMatch[1];
+              }
+
+              console.log('Extracted invalid reference to remove:', invalidRef);
+
+              const currentIds = currentValue.split(',').map((id: string) => id.trim()).filter(Boolean);
+              const validIds = currentIds.filter((id: string) => id !== invalidRef);
+              fixedValue = validIds.join(',');
+
+              console.log('Removal result - Valid IDs:', validIds);
+            }
+          } else {
+            console.error('Could not extract reference fix from AI suggestion:', aiSuggestion);
+            return;
+          }
+        }
+
+        console.log('Final fixed value:', fixedValue);
+
+        // Create a copy of the data with the fix applied
+        const updatedRows = [...currentSheetData.rows];
+        if (updatedRows[issue.row] && issue.column) {
+          updatedRows[issue.row] = {
+            ...updatedRows[issue.row],
+            [issue.column]: fixedValue
+          };
+        }
+
+        const updatedSheetData = {
+          ...currentSheetData,
+          rows: updatedRows
+        };
+
+        // Update the data using the existing handler
+        await handleDataChange(sheetName)(updatedSheetData);
+
+        // Mark cell as recently updated and clear hover state after a short delay
+        markCellAsUpdated(sheetName, issue.row, issue.column);
+
+        // Clear hover state after a brief moment to let user see the green background
+        setTimeout(() => {
+          setHoveredIssue(null);
+          if (hoverTimeout) {
+            clearTimeout(hoverTimeout);
+            setHoverTimeout(null);
+          }
+        }, 1000);
+
+        console.log(`✅ Applied AI reference fix to ${sheetName} sheet, row ${issue.row + 1}, column ${issue.column}`);
+      } catch (error) {
+        console.error('Error applying AI reference fix:', error);
+      }
+    } else {
+      console.log('AI fix not implemented for this issue type:', issue.category);
+      console.log('Issue:', issue);
+      console.log('AI suggestion:', aiSuggestion);
+    }
   };
 
   // Clean up helper function that's still needed
   const handleHighlightComplete = () => {
     setHighlightedCells([]);
   };
+
 
   // Column mapping dialog handlers
   const handleAcceptMappings = useCallback(async () => {
@@ -559,11 +1282,11 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
     if (!parsedData.clients || !parsedData.clients.headers.includes('GroupTag')) {
       return [];
     }
-    
+
     const groups = parsedData.clients.rows
       .map(row => String(row.GroupTag || '').trim())
       .filter(group => group !== '');
-    
+
     return [...new Set(groups)]; // Remove duplicates
   }, [parsedData.clients]);
 
@@ -572,13 +1295,26 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
     if (!parsedData.workers || !parsedData.workers.headers.includes('WorkerGroup')) {
       return [];
     }
-    
+
     const groups = parsedData.workers.rows
       .map(row => String(row.WorkerGroup || '').trim())
       .filter(group => group !== '');
-    
+
     return [...new Set(groups)]; // Remove duplicates
   }, [parsedData.workers]);
+
+  // Debug logging
+  console.log('ValidationView parsedData state:', {
+    hasClients: !!parsedData.clients,
+    hasWorkers: !!parsedData.workers,
+    hasTasks: !!parsedData.tasks,
+    clientsHeaders: parsedData.clients?.headers,
+    workersHeaders: parsedData.workers?.headers,
+    tasksHeaders: parsedData.tasks?.headers,
+    clientsRows: parsedData.clients?.rows?.length,
+    workersRows: parsedData.workers?.rows?.length,
+    tasksRows: parsedData.tasks?.rows?.length,
+  });
 
   if (loading) {
     return (
@@ -632,82 +1368,218 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
   // Show parsing summary screen
   if (parsingComplete && parsingSummary) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="max-w-2xl w-full mx-4">
-          <div className="bg-white rounded-lg shadow-lg p-8">
-            <div className="text-center mb-6">
-              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div className="min-h-screen bg-gray-50 flex flex-col">
+        {/* Header */}
+        <div className="bg-white border-b border-gray-200 px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
               </div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                Files Processed Successfully! 🎉
-              </h2>
-              <p className="text-gray-600">
-                AI has intelligently mapped your column headers for better data validation.
-              </p>
+              <div>
+                <h1 className="text-xl font-bold text-gray-900">Files Processed Successfully</h1>
+                <p className="text-sm text-gray-600">AI has enhanced your data with intelligent column mapping</p>
+              </div>
+            </div>
+            <div className="flex items-center space-x-3">
+              {parsingSummary.aiMappingsApplied.length > 0 && (
+                <div className="bg-blue-50 text-blue-700 px-3 py-2 rounded-lg text-sm font-medium">
+                  {parsingSummary.aiMappingsApplied.length === 1
+                    ? `1 file enhanced`
+                    : `${parsingSummary.aiMappingsApplied.length} files enhanced`
+                  } • {parsingSummary.totalMappings} {parsingSummary.totalMappings === 1 ? 'mapping' : 'mappings'}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Main Content */}
+        <div className="flex-1 p-6">
+          <div className="max-w-4xl mx-auto">
+            {/* Success Banner */}
+            <div className="bg-gradient-to-r from-green-50 to-blue-50 border border-green-200 rounded-lg p-6 mb-6">
+              <div className="flex items-center">
+                <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mr-4">
+                  <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <div className="flex-1">
+                  <h2 className="text-lg font-semibold text-gray-900 mb-1">
+                    Processing Complete! 🎉
+                  </h2>
+                  <p className="text-gray-600">
+                    Your files have been successfully processed and are ready for validation.
+                  </p>
+                </div>
+              </div>
             </div>
 
-            <div className="space-y-6">
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <h3 className="font-semibold text-blue-900 mb-3 flex items-center">
-                  🤖 AI Column Mapping Summary
-                </h3>
-                <div className="grid grid-cols-3 gap-4 text-center mb-4">
+            {/* Statistics Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+              <div className="bg-white border border-gray-200 rounded-lg p-6">
+                <div className="flex items-center">
+                  <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
+                    <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                  </div>
                   <div>
-                    <div className="text-2xl font-bold text-blue-600">{parsingSummary.totalFiles}</div>
+                    <div className="text-2xl font-bold text-gray-900">{parsingSummary.totalFiles}</div>
                     <div className="text-sm text-gray-600">Files Processed</div>
-                  </div>
-                  <div>
-                    <div className="text-2xl font-bold text-green-600">{parsingSummary.aiMappingsApplied.length}</div>
-                    <div className="text-sm text-gray-600">Files Enhanced</div>
-                  </div>
-                  <div>
-                    <div className="text-2xl font-bold text-purple-600">{parsingSummary.totalMappings}</div>
-                    <div className="text-sm text-gray-600">Columns Mapped</div>
                   </div>
                 </div>
               </div>
 
-              {parsingSummary.aiMappingsApplied.map((fileMapping, index) => (
-                <div key={index} className="border border-gray-200 rounded-lg p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <h4 className="font-medium text-gray-900 capitalize">
-                      📋 {fileMapping.file} File
-                    </h4>
-                    <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
-                      {Math.round(fileMapping.confidence * 100)}% confidence
-                    </span>
+              <div className="bg-white border border-gray-200 rounded-lg p-6">
+                <div className="flex items-center">
+                  <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center mr-3">
+                    <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                    </svg>
                   </div>
-
-                  <div className="space-y-2">
-                    {fileMapping.mappings.map((mapping, mappingIndex) => (
-                      <div key={mappingIndex} className="flex items-center text-sm">
-                        <span className="font-mono bg-red-100 text-red-800 px-2 py-1 rounded text-xs">
-                          {mapping.from}
-                        </span>
-                        <svg className="w-4 h-4 mx-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                        </svg>
-                        <span className="font-mono bg-green-100 text-green-800 px-2 py-1 rounded text-xs">
-                          {mapping.to}
-                        </span>
-                      </div>
-                    ))}
+                  <div>
+                    <div className="text-2xl font-bold text-gray-900">{parsingSummary.aiMappingsApplied.length}</div>
+                    <div className="text-sm text-gray-600">Files Enhanced by AI</div>
                   </div>
                 </div>
-              ))}
+              </div>
 
-              <div className="text-center pt-4 border-t border-gray-200">
-                <p className="text-sm text-gray-600 mb-4">
-                  These changes have been automatically applied to improve data validation accuracy.
+              <div className="bg-white border border-gray-200 rounded-lg p-6">
+                <div className="flex items-center">
+                  <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center mr-3">
+                    <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold text-gray-900">{parsingSummary.totalMappings}</div>
+                    <div className="text-sm text-gray-600">Column Headers Fixed</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* AI Mapping Details */}
+            {parsingSummary.aiMappingsApplied.length > 0 && (
+              <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6">
+                <div className="flex items-center mb-4">
+                  <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
+                    <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900">AI Column Mapping Results</h3>
+                    <p className="text-sm text-gray-600">
+                      AI detected and fixed misnamed column headers in{' '}
+                      {parsingSummary.aiMappingsApplied.map(file => `${file.file}.csv`).join(', ')}
+                      {parsingSummary.aiMappingsApplied.length > 1 ? ' files' : ' file'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  {parsingSummary.aiMappingsApplied.map((fileMapping, index) => (
+                    <div key={index} className="border border-gray-100 rounded-lg p-4 bg-gray-50">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center">
+                          <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
+                            <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                          </div>
+                          <div>
+                            <h4 className="font-medium text-gray-900 capitalize">
+                              {fileMapping.file}.csv
+                            </h4>
+                            <p className="text-sm text-gray-600">
+                              {(() => {
+                                const actualMappings = fileMapping.mappings.filter(mapping => mapping.from !== mapping.to).length;
+                                return actualMappings === 1
+                                  ? `1 column header fixed`
+                                  : actualMappings === 0
+                                    ? `No headers needed fixing`
+                                    : `${actualMappings} column headers fixed`;
+                              })()}
+                            </p>
+                          </div>
+                        </div>
+                        <span className="text-xs bg-green-100 text-green-800 px-3 py-1 rounded-full font-medium">
+                          {Math.round(fileMapping.confidence * 100)}% confidence
+                        </span>
+                      </div>
+
+                      <div className="space-y-2">
+                        {fileMapping.mappings
+                          .filter(mapping => mapping.from !== mapping.to)
+                          .map((mapping, mappingIndex) => (
+                            <div key={mappingIndex} className="flex items-center justify-between bg-white rounded-lg p-3 border border-gray-200">
+                              <div className="flex items-center flex-1">
+                                <span className="font-mono bg-red-50 text-red-700 px-3 py-1 rounded border border-red-200 text-sm">
+                                  "{mapping.from}"
+                                </span>
+                                <svg className="w-5 h-5 mx-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                                </svg>
+                                <span className="font-mono bg-green-50 text-green-700 px-3 py-1 rounded border border-green-200 text-sm">
+                                  "{mapping.to}"
+                                </span>
+                              </div>
+                              <span className="text-xs text-blue-600 font-medium ml-3">
+                                AI Fixed
+                              </span>
+                            </div>
+                          ))}
+                        {fileMapping.mappings.filter(mapping => mapping.from !== mapping.to).length === 0 && (
+                          <div className="text-center py-4 text-gray-500 text-sm">
+                            No column headers needed fixing - all were already correct!
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* No Mappings Message */}
+            {parsingSummary.aiMappingsApplied.length === 0 && (
+              <div className="bg-white border border-green-200 rounded-lg p-6 mb-6">
+                <div className="text-center">
+                  <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Perfect Headers Detected!</h3>
+                  <p className="text-gray-600">
+                    All your column headers were already correctly formatted. No AI mapping was needed.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Continue Button */}
+            <div className="bg-white border border-gray-200 rounded-lg p-6">
+              <div className="text-center">
+                <p className="text-gray-600 mb-4">
+                  {parsingSummary.aiMappingsApplied.length > 0
+                    ? "These changes have been automatically applied to improve data validation accuracy."
+                    : "Your files are ready for validation."
+                  }
                 </p>
                 <button
                   onClick={handleParsingSummaryConfirm}
-                  className="px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
+                  className="px-8 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors inline-flex items-center"
                 >
-                  Okay, Continue to Validation
+                  Continue to Validation
+                  <svg className="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                  </svg>
                 </button>
               </div>
             </div>
@@ -740,16 +1612,16 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
           </div>
           <div className="flex items-center space-x-3">
             <button
-              onClick={() => setShowRuleInput(!showRuleInput)}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2 ${showRuleInput
-                  ? 'bg-purple-600 text-white hover:bg-purple-700'
-                  : 'bg-white text-purple-600 border border-purple-600 hover:bg-purple-50'
+              onClick={() => setShowRuleDrawer(!showRuleDrawer)}
+              className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2 ${showRuleDrawer
+                ? 'bg-purple-600 text-white hover:bg-purple-700'
+                : 'bg-white text-purple-600 border border-purple-600 hover:bg-purple-50'
                 }`}
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
-              <span>{showRuleInput ? 'Hide Rules' : 'Business Rules'}</span>
+              <span>Business Rules</span>
               {businessRules.length > 0 && (
                 <span className="bg-white text-purple-600 px-2 py-0.5 rounded-full text-xs font-bold">
                   {businessRules.filter(r => r.active).length}
@@ -760,8 +1632,8 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
               onClick={onProceed}
               disabled={validationIssues.some(issue => issue.type === 'error')}
               className={`px-6 py-2 rounded-lg font-medium transition-colors ${validationIssues.some(issue => issue.type === 'error')
-                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                  : 'bg-blue-600 text-white hover:bg-blue-700'
+                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                : 'bg-blue-600 text-white hover:bg-blue-700'
                 }`}
             >
               Proceed to Analysis
@@ -771,25 +1643,16 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex">
         {/* Main Data View */}
-        <div className="flex-1 p-6 space-y-6">
-          {/* Rule Input UI */}
-          {showRuleInput && (
-            <RuleInputUI
-              rules={businessRules}
-              onRulesChange={handleRulesChange}
-              availableTasks={getAvailableTaskIds()}
-              availableClientGroups={getAvailableClientGroups()}
-              availableWorkerGroups={getAvailableWorkerGroups()}
-            />
-          )}
+        <div className="flex-1 p-6 space-y-6 overflow-y-auto">
 
           {/* Validation Summary */}
           {/* <ValidationSummary 
             issues={validationIssues} 
             onIssueClick={handleIssueClick}
           /> */}
+
 
           <TabbedDataView
             parsedData={parsedData}
@@ -801,6 +1664,7 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
             hoveredCell={hoveredIssue}
             onHighlightComplete={handleHighlightComplete}
             targetRow={targetRow}
+            recentlyUpdatedCells={recentlyUpdatedCells}
           />
         </div>
 
@@ -815,6 +1679,51 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
           onIssueUnhover={handleIssueUnhover}
         />
       </div>
+
+      {/* Business Rules Drawer */}
+      <Drawer
+        open={showRuleDrawer}
+        onClose={() => setShowRuleDrawer(false)}
+        direction="bottom"
+        className="!h-[85vh]"
+        style={{ height: '85vh' }}
+      >
+        <div className="flex flex-col h-full bg-white">
+          {/* Drawer Header */}
+          <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-purple-50">
+            <div className="flex items-center space-x-3">
+              <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
+                <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">Business Rules</h2>
+                <p className="text-sm text-gray-600">Configure validation rules</p>
+              </div>
+            </div>
+            <button
+              onClick={() => setShowRuleDrawer(false)}
+              className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          {/* Drawer Content */}
+          <div className="flex-1 overflow-y-auto">
+            <RuleInputUI
+              rules={businessRules}
+              onRulesChange={handleRulesChange}
+              availableTasks={getAvailableTaskIds()}
+              availableClientGroups={getAvailableClientGroups()}
+              availableWorkerGroups={getAvailableWorkerGroups()}
+            />
+          </div>
+        </div>
+      </Drawer>
 
       {/* AI Column Mapping Dialog */}
       {showColumnMappingDialog && columnMappingSuggestions && currentMappingFile && (
@@ -925,6 +1834,21 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
           </div>
         </div>
       )}
+
+      {/* Toast Container */}
+      <ToastContainer
+        position="top-center"
+        autoClose={8000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick={true}
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="light"
+        style={{ marginTop: '60px' }} // Add margin to avoid overlap with header
+      />
     </div>
   );
 }

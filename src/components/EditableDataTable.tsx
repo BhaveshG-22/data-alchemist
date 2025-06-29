@@ -13,6 +13,7 @@ interface EditableDataTableProps {
   hoveredCell?: { row: number; column: string; issueType?: 'error' | 'warning' | 'info'; category?: string } | null;
   onHighlightComplete?: () => void;
   targetRow?: number; // Row to navigate to
+  recentlyUpdatedCells?: Array<{ sheet: string; row: number; column: string; timestamp: number }>;
 }
 
 interface EditableColumn {
@@ -24,7 +25,15 @@ interface EditableColumn {
   style?: Record<string, string | number>;
 }
 
-export default function EditableDataTable({ data, onDataChange, title, highlightedCells = [], highlightedHeaders = [], hoveredCell, onHighlightComplete, targetRow }: EditableDataTableProps) {
+export default function EditableDataTable({ data, onDataChange, title, highlightedCells = [], highlightedHeaders = [], hoveredCell, onHighlightComplete, targetRow, recentlyUpdatedCells = [] }: EditableDataTableProps) {
+  // Debug logging
+  console.log('EditableDataTable render:', {
+    hasData: !!data,
+    headers: data?.headers,
+    rowsCount: data?.rows?.length,
+    tableDataType: typeof data?.rows,
+  });
+
   const [tableData, setTableData] = useState(data.rows);
   const [editingCell, setEditingCell] = useState<{ rowIndex: number; column: string } | null>(null);
   const [editingHeader, setEditingHeader] = useState<string | null>(null);
@@ -288,6 +297,11 @@ export default function EditableDataTable({ data, onDataChange, title, highlight
     const isFlashing = flashingCells.has(cellKey);
     const isHovered = hoveredCell?.row === rowIndex && hoveredCell?.column === column;
     const hoverColors = isHovered ? getIssueHoverColors(hoveredCell?.issueType, hoveredCell?.category) : '';
+    
+    // Check if this cell was recently updated
+    const isRecentlyUpdated = recentlyUpdatedCells.some(cell => 
+      cell.row === rowIndex && cell.column === column
+    );
 
     if (isEditing) {
       return (
@@ -310,31 +324,47 @@ export default function EditableDataTable({ data, onDataChange, title, highlight
     return (
       <div
         onClick={() => handleCellClick(rowIndex, column)}
+        data-row={rowIndex}
+        data-column={column}
+        data-cell-id={`cell-${rowIndex}-${column}`}
         className={`w-full px-2 py-1 cursor-pointer rounded min-h-[32px] flex items-center transition-all duration-300 border-2 ${
           isFlashing
             ? 'bg-green-200 border-green-400 animate-pulse shadow-lg'
+            : isRecentlyUpdated
+            ? 'bg-green-100 border-green-300 shadow-md'
             : isHovered
             ? `${hoverColors} shadow-md`
             : 'bg-transparent border-transparent hover:bg-gray-100'
         }`}
-        title="Click to edit"
+        title={isRecentlyUpdated ? "Recently updated by AI" : "Click to edit"}
       >
         {value || <span className="text-gray-400">Click to edit</span>}
       </div>
     );
-  }, [editingCell, flashingCells, hoveredCell, handleCellClick, handleCellEdit, handleCellBlur]);
+  }, [editingCell, flashingCells, hoveredCell, recentlyUpdatedCells, handleCellClick, handleCellEdit, handleCellBlur]);
 
   const columns: EditableColumn[] = useMemo(() => {
     console.log('Creating columns with headers:', data.headers);
+    if (!data.headers || data.headers.length === 0) {
+      console.error('No headers found in data:', data);
+      return [];
+    }
     return data.headers.map(header => {
       const isFlashing = flashingHeaders.has(header);
       return {
         name: header,
         selector: (row: Record<string, unknown>) => String(row[header] || ''),
-        cell: (row: Record<string, unknown>) => {
-          // Find the actual row index in the data
-          const actualRowIndex = tableData.findIndex(dataRow => dataRow === row);
-          return renderEditableCell(row, actualRowIndex, header);
+        cell: (row: Record<string, unknown>, index?: number) => {
+          try {
+            // Find the original row index in the initial data (before any sorting/filtering)
+            const originalRowIndex = data.rows.findIndex(dataRow => dataRow === row);
+            const displayRowIndex = originalRowIndex !== -1 ? originalRowIndex : (index !== undefined ? index : tableData.findIndex(dataRow => dataRow === row));
+            
+            return renderEditableCell(row, displayRowIndex, header);
+          } catch (error) {
+            console.error('Error rendering cell:', error, { row, header, index });
+            return <div className="text-red-500 text-xs">Error</div>;
+          }
         },
         sortable: true,
         width: '150px',
@@ -385,6 +415,53 @@ export default function EditableDataTable({ data, onDataChange, title, highlight
 
   const showHeader = title && title.trim() !== '';
 
+  // Safety check for data
+  if (!data || !data.headers || !Array.isArray(data.headers) || data.headers.length === 0) {
+    console.error('Invalid data passed to EditableDataTable:', data);
+    return (
+      <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-8">
+        <div className="text-center">
+          <div className="text-red-500 mb-4">
+            <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">Invalid Data</h3>
+          <p className="text-gray-500">No valid data or headers found to display.</p>
+          <div className="mt-4 text-xs text-gray-400">
+            Debug: {JSON.stringify({ hasData: !!data, headers: data?.headers, rowsLength: data?.rows?.length })}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!data.rows || !Array.isArray(data.rows)) {
+    console.error('Invalid rows data:', data.rows);
+    return (
+      <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-8">
+        <div className="text-center">
+          <div className="text-yellow-500 mb-4">
+            <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">No Data Rows</h3>
+          <p className="text-gray-500">Headers found but no data rows to display.</p>
+          <div className="mt-2 text-sm text-gray-600">
+            Headers: {data.headers.join(', ')}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  console.log('Rendering EditableDataTable with:', {
+    headerCount: data.headers.length,
+    rowCount: data.rows.length,
+    columnsCount: columns.length
+  });
+
   return (
     <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
       {showHeader && (
@@ -414,25 +491,42 @@ export default function EditableDataTable({ data, onDataChange, title, highlight
           </div>
         </div>
 
-        <DataTable
-          key={`datatable-${currentPage}-${rowsPerPage}-${targetRow || 0}`}
-          columns={columns}
-          data={tableData}
-          noHeader={true}
-          customStyles={customStyles}
-          pagination
-          paginationPerPage={rowsPerPage}
-          paginationRowsPerPageOptions={[10, 15, 25, 50]}
-          paginationDefaultPage={currentPage}
-          onChangePage={setCurrentPage}
-          onChangeRowsPerPage={(newRowsPerPage) => {
-            setRowsPerPage(newRowsPerPage);
-            setCurrentPage(1); // Reset to first page when changing rows per page
-          }}
-          highlightOnHover
-          responsive
-          dense
-        />
+        {columns.length > 0 && tableData.length > 0 ? (
+          <DataTable
+            key={`datatable-${currentPage}-${rowsPerPage}-${targetRow || 0}`}
+            columns={columns}
+            data={tableData}
+            noHeader={true}
+            customStyles={customStyles}
+            pagination
+            paginationPerPage={rowsPerPage}
+            paginationRowsPerPageOptions={[10, 15, 25, 50]}
+            paginationDefaultPage={currentPage}
+            onChangePage={setCurrentPage}
+            onChangeRowsPerPage={(newRowsPerPage) => {
+              setRowsPerPage(newRowsPerPage);
+              setCurrentPage(1); // Reset to first page when changing rows per page
+            }}
+            highlightOnHover
+            responsive
+            dense
+          />
+        ) : (
+          <div className="p-8 text-center">
+            <div className="text-gray-400 mb-4">
+              <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No Data Available</h3>
+            <p className="text-gray-500">
+              {columns.length === 0 ? 'No columns configured' : 'No rows to display'}
+            </p>
+            <div className="mt-2 text-xs text-gray-400">
+              Columns: {columns.length}, Rows: {tableData.length}
+            </div>
+          </div>
+        )}
       </div>
       
       {!showHeader && (
