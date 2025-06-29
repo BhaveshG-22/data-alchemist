@@ -45,7 +45,7 @@ export function validateConflictingRules(context: ValidatorContext): ValidationI
       const intersection = constrainedTasks.reduce((common, task) => {
         if (common.length === 0) return task.allowedPhases;
         return common.filter(phase => task.allowedPhases.includes(phase));
-      }, [] as number[]);
+      }, [] as string[]);
 
       if (intersection.length === 0) {
         const taskList = constrainedTasks.map(t => t.taskId).join(', ');

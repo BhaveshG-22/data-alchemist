@@ -1,0 +1,31 @@
+TaskID,TaskName,Category,Duration,RequiredSkills,PreferredPhases,MaxConcurrent
+T001,Basic Web Development,development,5,javascript,1,3
+T002,Database Design,database,8,sql,2,2
+T003,UI/UX Design,design,6,design,1,4
+T004,Python Analysis,analytics,4,python,3,2
+T005,Mobile App Development,mobile,10,javascript,2,1
+T006,Data Visualization,analytics,3,python,4,5
+T007,API Development,backend,7,nodejs,3,2
+T008,Quality Assurance,testing,4,testing,5,3
+T009,DevOps Setup,infrastructure,6,devops,1,2
+T010,Machine Learning,ai,12,python,4,1
+T011,Frontend Framework,frontend,8,react,2,3
+T012,Security Audit,security,5,security,5,2
+T013,Performance Optimization,optimization,3,javascript,3,4
+T014,Content Creation,content,2,writing,1,6
+T015,Project Management,management,4,management,2,2
+T016,Complex Integration,integration,15,integration,4,1
+T017,Research Analysis,research,6,research,3,3
+T018,Code Review,review,2,review,5,8
+T019,Documentation,documentation,3,writing,4,5
+T020,Training Session,training,8,training,2,2
+DUPLICATE_ID,Duplicate Task,test,5,testing,1,1
+T021,Missing Skill Task,test,4,nonexistent_skill,1,1
+T022,Invalid Duration Task,test,0,javascript,1,1
+T023,Invalid Concurrent Task,test,5,python,1,0
+T024,Empty Skills Task,test,3,,1,1
+DUPLICATE_ID,Another Duplicate,test,3,javascript,2,1
+T025,JSON Malformed Task,test,5,python,malformed_json,1
+T026,Extremely Long Task,test,999,javascript,1,1
+T027,Negative Duration,test,-5,python,1,1
+T028,Overrange Concurrent,test,5,javascript,1,50

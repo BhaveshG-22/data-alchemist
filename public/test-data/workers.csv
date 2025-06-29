@@ -1,0 +1,31 @@
+WorkerID,WorkerName,Skills,AvailableSlots,MaxLoadPerPhase,WorkerGroup,QualificationLevel
+W001,Alice Johnson,javascript,1,1,frontend,8
+W002,Bob Smith,sql,2,2,database,7
+W003,Carol White,design,3,2,creative,9
+W004,David Brown,python,4,3,analytics,8
+W005,Emma Davis,nodejs,5,4,backend,7
+W006,Frank Wilson,testing,6,5,qa,6
+W007,Grace Lee,devops,7,6,infrastructure,9
+W008,Henry Garcia,react,8,7,frontend,8
+W009,Irene Martinez,security,9,8,security,10
+W010,Jack Anderson,javascript,10,9,frontend,7
+W011,Karen Taylor,python,2,1,analytics,8
+W012,Luke Thomas,integration,3,2,backend,6
+W013,Maria Rodriguez,research,4,3,research,9
+W014,Nathan Clark,review,5,4,qa,7
+W015,Olivia Lewis,writing,6,5,content,8
+W016,Paul Walker,management,7,6,management,9
+W017,Quinn Hall,training,8,7,training,8
+W018,Rachel Young,javascript,9,8,frontend,7
+W019,Steve King,python,10,9,analytics,8
+W020,Tina Wright,design,1,1,creative,9
+DUPLICATE_WORKER,Duplicate Name,javascript,5,4,frontend,8
+W021,Over Capacity Worker,python,2,5,analytics,7
+W022,Invalid Qualification,javascript,5,4,frontend,15
+W023,Negative Qualification,python,3,2,analytics,-2
+W024,Empty Skills Worker,,4,3,general,5
+W025,Zero Load Worker,javascript,5,0,frontend,6
+W026,Negative Load Worker,python,4,-1,analytics,7
+DUPLICATE_WORKER,Another Duplicate,react,6,5,frontend,8
+W027,Overqualified Worker,javascript,3,2,frontend,11
+W028,Underqualified Worker,python,4,3,analytics,0

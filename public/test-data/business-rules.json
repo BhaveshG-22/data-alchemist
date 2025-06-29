@@ -1,0 +1,204 @@
+[
+  {
+    "id": "corun_001",
+    "type": "coRun",
+    "description": "Web development tasks must run together",
+    "active": true,
+    "priority": 1,
+    "tasks": ["T001", "T011"]
+  },
+  {
+    "id": "corun_002", 
+    "type": "coRun",
+    "description": "Analytics tasks coordination",
+    "active": true,
+    "priority": 2,
+    "tasks": ["T004", "T006", "T010"]
+  },
+  {
+    "id": "corun_003",
+    "type": "coRun", 
+    "description": "Testing and review tasks",
+    "active": true,
+    "priority": 1,
+    "tasks": ["T008", "T018"]
+  },
+  {
+    "id": "phase_window_001",
+    "type": "phaseWindow",
+    "description": "T001 restricted to early phases",
+    "active": true,
+    "priority": 2,
+    "taskId": "T001",
+    "allowedPhases": ["1", "2"]
+  },
+  {
+    "id": "phase_window_002",
+    "type": "phaseWindow",
+    "description": "T011 restricted to later phases",
+    "active": true,
+    "priority": 2,
+    "taskId": "T011", 
+    "allowedPhases": ["4", "5"]
+  },
+  {
+    "id": "phase_window_003",
+    "type": "phaseWindow",
+    "description": "T004 analytics phase window",
+    "active": true,
+    "priority": 1,
+    "taskId": "T004",
+    "allowedPhases": ["2", "3", "4"]
+  },
+  {
+    "id": "phase_window_004",
+    "type": "phaseWindow",
+    "description": "T006 visualization phases",
+    "active": true,
+    "priority": 1,
+    "taskId": "T006",
+    "allowedPhases": ["3", "4", "5"]
+  },
+  {
+    "id": "phase_window_005",
+    "type": "phaseWindow",
+    "description": "T010 ML restricted phases",
+    "active": true,
+    "priority": 1,
+    "taskId": "T010",
+    "allowedPhases": ["4", "5"]
+  },
+  {
+    "id": "load_limit_001",
+    "type": "loadLimit",
+    "description": "Frontend team load restriction",
+    "active": true,
+    "priority": 2,
+    "workerGroup": "frontend",
+    "maxSlotsPerPhase": 2
+  },
+  {
+    "id": "load_limit_002",
+    "type": "loadLimit",
+    "description": "Analytics team capacity",
+    "active": true,
+    "priority": 1,
+    "workerGroup": "analytics",
+    "maxSlotsPerPhase": 1
+  },
+  {
+    "id": "slot_restriction_001",
+    "type": "slotRestriction",
+    "description": "Enterprise clients need common availability",
+    "active": true,
+    "priority": 2,
+    "targetGroup": "enterprise",
+    "groupType": "client", 
+    "minCommonSlots": 3
+  },
+  {
+    "id": "slot_restriction_002",
+    "type": "slotRestriction",
+    "description": "QA team coordination requirement",
+    "active": true,
+    "priority": 1,
+    "targetGroup": "qa",
+    "groupType": "worker",
+    "minCommonSlots": 2
+  },
+  {
+    "id": "phase_range_001",
+    "type": "phaseWindow",
+    "description": "Infrastructure tasks early deployment",
+    "active": true,
+    "priority": 1,
+    "taskId": "T009",
+    "phaseRange": {
+      "start": 1,
+      "end": 3
+    }
+  },
+  {
+    "id": "phase_range_002",
+    "type": "phaseWindow",
+    "description": "Security audit final phases",
+    "active": true,
+    "priority": 2,
+    "taskId": "T012",
+    "phaseRange": {
+      "start": 4,
+      "end": 5
+    }
+  },
+  {
+    "id": "conflicting_phase_001",
+    "type": "phaseWindow",
+    "description": "Conflicting T001 phase restriction",
+    "active": true,
+    "priority": 1,
+    "taskId": "T001",
+    "allowedPhases": ["5"]
+  },
+  {
+    "id": "circular_corun_001",
+    "type": "coRun",
+    "description": "Circular dependency A->B",  
+    "active": true,
+    "priority": 1,
+    "tasks": ["T013", "T014"]
+  },
+  {
+    "id": "circular_corun_002",
+    "type": "coRun",
+    "description": "Circular dependency B->C",
+    "active": true,
+    "priority": 1,
+    "tasks": ["T014", "T015"]
+  },
+  {
+    "id": "circular_corun_003",
+    "type": "coRun",
+    "description": "Circular dependency C->A (completes circle)",
+    "active": true,
+    "priority": 1,
+    "tasks": ["T015", "T013"]
+  },
+  {
+    "id": "large_corun_conflict",
+    "type": "coRun",
+    "description": "Large co-run group vs load limit",
+    "active": true,
+    "priority": 1,
+    "tasks": ["T001", "T002", "T003", "T004", "T005"]
+  },
+  {
+    "id": "inactive_rule",
+    "type": "coRun",
+    "description": "This rule should be ignored",
+    "active": false,
+    "priority": 1,
+    "tasks": ["T999", "T888"]
+  },
+  {
+    "id": "pattern_match_001",
+    "type": "patternMatch",
+    "description": "Pattern matching rule example",
+    "active": true,
+    "priority": 1,
+    "pattern": "T0[1-5].*",
+    "ruleTemplate": "early_phase_restriction",
+    "parameters": {
+      "maxPhase": 3,
+      "reason": "foundational_tasks"
+    }
+  },
+  {
+    "id": "precedence_override_001",
+    "type": "precedenceOverride",
+    "description": "Override for critical path",
+    "active": true,
+    "priority": 3,
+    "scope": "specific",
+    "overrides": ["phase_window_001", "load_limit_001"]
+  }
+]

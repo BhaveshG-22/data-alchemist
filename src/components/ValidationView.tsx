@@ -508,7 +508,7 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
 
     // Only highlight if the issue has a specific row and column
     if (issue.row !== undefined && issue.column) {
-      const rowsPerPage = 15; // Standard pagination size
+      const rowsPerPage = 50; // Standard pagination size
       const targetPage = Math.ceil((issue.row + 1) / rowsPerPage);
       const isCurrentSheet = issue.sheet === activeTab;
 
@@ -566,9 +566,14 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
               console.log(`🔍 Cell rect:`, cellRect);
               console.log(`🔍 Container rect:`, containerRect);
 
-              // More comprehensive visibility detection
-              const isVisibleVertically = cellRect.top >= containerRect.top && cellRect.bottom <= containerRect.bottom;
-              const isVisibleHorizontally = cellRect.left >= containerRect.left && cellRect.right <= containerRect.right;
+              // More comprehensive visibility detection with margin for better UX
+              const margin = 20; // Add some margin to consider cells "visible" if they're close
+              const isVisibleVertically = 
+                cellRect.top >= (containerRect.top - margin) && 
+                cellRect.bottom <= (containerRect.bottom + margin);
+              const isVisibleHorizontally = 
+                cellRect.left >= (containerRect.left - margin) && 
+                cellRect.right <= (containerRect.right + margin);
               const isVisible = isVisibleVertically && isVisibleHorizontally;
 
               // Determine scroll position based on cell location relative to container
@@ -605,10 +610,13 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
 
                 console.log(`🔍 Scroll direction: ${isCellBelow ? 'below (end)' : isCellAbove ? 'above (start)' : 'side/partial (center)'}, using scroll position: ${scrollPosition}`);
 
-                // Add a subtle visual indicator that scrolling is happening
-                toast.info(`📍 Scrolling to row ${issue.row !== undefined ? issue.row + 1 : 'unknown'}`, {
+                // Show a more subtle scrolling indicator
+                console.log(`📍 Scrolling to row ${issue.row !== undefined ? issue.row + 1 : 'unknown'}`);
+                
+                // Add a brief toast for feedback - shorter duration
+                toast.info(`Scrolling to row ${issue.row !== undefined ? issue.row + 1 : 'unknown'}`, {
                   position: "bottom-right",
-                  autoClose: 2000,
+                  autoClose: 1000,
                   hideProgressBar: true,
                   closeOnClick: true,
                   pauseOnHover: false,
@@ -746,10 +754,10 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
           }
         };
 
-        // Small delay to allow DOM to update - increased for better reliability
-        setTimeout(scrollToCellIfNeeded, 200);
-
-        // Fallback attempt if first one doesn't find the cell
+        // Progressive delay attempts to ensure DOM is ready
+        setTimeout(scrollToCellIfNeeded, 100);
+        
+        // Multiple fallback attempts with increasing delays
         setTimeout(() => {
           const cellSelector1 = `[data-row="${issue.row}"][data-column="${issue.column}"]`;
           const cellSelector2 = `[data-cell-id="cell-${issue.row}-${issue.column}"]`;
@@ -758,108 +766,59 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
             cellElement = document.querySelector(cellSelector2);
           }
           if (!cellElement) {
-            console.log(`🔄 Fallback attempt: Cell still not found after 500ms, trying setTargetRow`);
+            console.log(`🔄 Retry 1: Cell still not found after 300ms, trying again...`);
+            scrollToCellIfNeeded();
+          }
+        }, 300);
+
+        // Final fallback with navigation if cell still not found
+        setTimeout(() => {
+          const cellSelector1 = `[data-row="${issue.row}"][data-column="${issue.column}"]`;
+          const cellSelector2 = `[data-cell-id="cell-${issue.row}-${issue.column}"]`;
+          let cellElement = document.querySelector(cellSelector1);
+          if (!cellElement) {
+            cellElement = document.querySelector(cellSelector2);
+          }
+          if (!cellElement) {
+            console.log(`🔄 Final fallback: Cell not found after 800ms, using setTargetRow navigation`);
             setTargetRow(issue.row);
           }
+        }, 800);
+
+        // Always navigate to the target row and ensure correct pagination
+        console.log(`🧭 Navigating to row ${issue.row + 1} on page ${targetPage}`);
+        setTargetRow(issue.row);
+        
+        // Also force a scroll after a delay to ensure the cell is visible
+        setTimeout(() => {
+          if (issue.row !== undefined) {
+            const cellSelector = `[data-row="${issue.row}"][data-column="${issue.column}"]`;
+            const cellElement = document.querySelector(cellSelector);
+            if (cellElement) {
+              cellElement.scrollIntoView({
+                behavior: 'smooth',
+                block: 'center',
+                inline: 'center'
+              });
+              console.log(`🔄 Force-scrolled to cell at row ${issue.row + 1}, column ${issue.column}`);
+            }
+          }
         }, 500);
-
-        // If it's on a different page, show toast after delay
-        if (targetPage !== getCurrentPage()) {
-          const timeoutId = setTimeout(() => {
-            const navigateToIssue = () => {
-              if (issue.row !== undefined) {
-                console.log(`🧭 Navigating to page ${targetPage} for row ${issue.row + 1}`);
-                setTargetRow(issue.row);
-                toast.dismiss();
-              }
-            };
-
-            toast.info(
-              <div className="flex flex-col space-y-2">
-                <div className="font-medium text-gray-900">📍 Issue on Different Page</div>
-                <div className="text-sm text-gray-600">
-                  This issue is on <strong className="text-blue-700">page {targetPage}</strong>,
-                  row <strong className="text-blue-700">{issue.row !== undefined ? issue.row + 1 : 'unknown'}</strong>,
-                  column <strong className="text-blue-700">{issue.column}</strong>
-                </div>
-                <button
-                  onClick={navigateToIssue}
-                  className="mt-2 bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700 transition-colors self-start"
-                >
-                  🧭 Go to Page {targetPage}
-                </button>
-              </div>,
-              {
-                position: "top-center",
-                autoClose: 6000,
-                hideProgressBar: false,
-                closeOnClick: false,
-                pauseOnHover: true,
-                draggable: true,
-                toastId: `page-nav-${issue.row}-${issue.column}`,
-              }
-            );
-          }, 1500);
-
-          setHoverTimeout(timeoutId);
-        }
       } else {
-        // For different sheet, show toast after delay
-        const timeoutId = setTimeout(() => {
-          const navigateToIssue = () => {
-            if (issue.row !== undefined) {
-              console.log(`🧭 Navigating to ${issue.sheet} sheet, row ${issue.row + 1}, page ${targetPage}`);
+        // For different sheet, auto-navigate without toast
+        console.log(`🧭 Auto-navigating to ${issue.sheet} sheet, row ${issue.row + 1}, page ${targetPage}`);
 
-              if (issue.sheet && issue.sheet !== activeTab) {
-                setActiveTab(issue.sheet as 'clients' | 'workers' | 'tasks');
-              }
+        if (issue.sheet && issue.sheet !== activeTab) {
+          setActiveTab(issue.sheet as 'clients' | 'workers' | 'tasks');
+        }
 
-              setTimeout(() => {
-                setTargetRow(issue.row);
-              }, 100);
-
-              toast.dismiss();
-            }
-          };
-
-          toast.info(
-            <div className="flex flex-col space-y-2">
-              <div className="font-medium text-gray-900">📍 Issue on Different Sheet</div>
-              <div className="text-sm text-gray-600">
-                This issue is in <strong className="text-blue-700">{issue.sheet}</strong> sheet,
-                row <strong className="text-blue-700">{issue.row !== undefined ? issue.row + 1 : 'unknown'}</strong>,
-                column <strong className="text-blue-700">{issue.column}</strong> (Page {targetPage})
-              </div>
-              <button
-                onClick={navigateToIssue}
-                className="mt-2 bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700 transition-colors self-start"
-              >
-                🧭 Go to {issue.sheet} Sheet
-              </button>
-            </div>,
-            {
-              position: "top-center",
-              autoClose: 8000,
-              hideProgressBar: false,
-              closeOnClick: false,
-              pauseOnHover: true,
-              draggable: true,
-              toastId: `sheet-nav-${issue.row}-${issue.column}-${issue.sheet}`,
-            }
-          );
-        }, 1500);
-
-        setHoverTimeout(timeoutId);
+        setTimeout(() => {
+          setTargetRow(issue.row);
+        }, 100);
       }
     }
   };
 
-  // Helper function to get current page (we'll need to track this)
-  const getCurrentPage = () => {
-    // This would need to be tracked from the data table component
-    // For now, assume page 1 as default
-    return 1;
-  };
 
   const handleIssueUnhover = () => {
     // Clear any existing timeout (including toast delay timeout)
@@ -1199,6 +1158,94 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
         console.log(`✅ Applied AI reference fix to ${sheetName} sheet, row ${issue.row + 1}, column ${issue.column}`);
       } catch (error) {
         console.error('Error applying AI reference fix:', error);
+      }
+    }
+    // Handle out of range validation fixes
+    else if (issue.category === 'out_of_range' && issue.row !== undefined && issue.column && issue.sheet) {
+      try {
+        // Extract the fixed value from the AI suggestion
+        let fixedValue = '';
+
+        // Pattern 1: 💡 Fix:1 (exactly as shown in screenshot)
+        let fixMatch = aiSuggestion.match(/💡\s*Fix:\s*(\d+(?:\.\d+)?)/);
+
+        // Pattern 2: 💡 **Fix**: 1 (with bold formatting)
+        if (!fixMatch) {
+          fixMatch = aiSuggestion.match(/💡\s*\*\*Fix\*\*:\s*(\d+(?:\.\d+)?)/);
+        }
+
+        // Pattern 3: Generic Fix: pattern
+        if (!fixMatch) {
+          fixMatch = aiSuggestion.match(/Fix:\s*(\d+(?:\.\d+)?)/);
+        }
+
+        // Pattern 4: Look for just a standalone number after 💡
+        if (!fixMatch) {
+          fixMatch = aiSuggestion.match(/💡[^0-9]*(\d+(?:\.\d+)?)/);
+        }
+
+        // Pattern 5: Last resort - any number in the suggestion
+        if (!fixMatch) {
+          fixMatch = aiSuggestion.match(/(\d+(?:\.\d+)?)/);
+        }
+
+        if (!fixMatch) {
+          console.error('Could not extract numeric fix from AI suggestion:', aiSuggestion);
+          return;
+        }
+
+        fixedValue = fixMatch[1].trim();
+
+        // Validate that the fixed value is actually a number
+        const numericValue = parseFloat(fixedValue);
+        if (isNaN(numericValue)) {
+          console.error('AI suggested fix is not a valid number:', fixedValue);
+          return;
+        }
+
+        console.log(`Applying out-of-range fix: ${fixedValue} for column ${issue.column}`);
+
+        // Apply the fix to the data
+        const sheetName = issue.sheet as 'clients' | 'workers' | 'tasks';
+        const currentSheetData = parsedData[sheetName];
+
+        if (!currentSheetData) {
+          console.error('Sheet data not found:', sheetName);
+          return;
+        }
+
+        // Create a copy of the data with the fix applied
+        const updatedRows = [...currentSheetData.rows];
+        if (updatedRows[issue.row] && issue.column) {
+          updatedRows[issue.row] = {
+            ...updatedRows[issue.row],
+            [issue.column]: fixedValue
+          };
+        }
+
+        const updatedSheetData = {
+          ...currentSheetData,
+          rows: updatedRows
+        };
+
+        // Update the data using the existing handler
+        await handleDataChange(sheetName)(updatedSheetData);
+
+        // Mark cell as recently updated and clear hover state after a short delay
+        markCellAsUpdated(sheetName, issue.row, issue.column);
+
+        // Clear hover state after a brief moment to let user see the green background
+        setTimeout(() => {
+          setHoveredIssue(null);
+          if (hoverTimeout) {
+            clearTimeout(hoverTimeout);
+            setHoverTimeout(null);
+          }
+        }, 1000);
+
+        console.log(`✅ Applied AI out-of-range fix to ${sheetName} sheet, row ${issue.row + 1}, column ${issue.column}`);
+      } catch (error) {
+        console.error('Error applying AI out-of-range fix:', error);
       }
     } else {
       console.log('AI fix not implemented for this issue type:', issue.category);

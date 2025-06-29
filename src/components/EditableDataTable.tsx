@@ -42,7 +42,7 @@ export default function EditableDataTable({ data, onDataChange, title, highlight
   const [headerKey, setHeaderKey] = useState(0);
   const [sortConfig, setSortConfig] = useState<{ column: string; direction: 'asc' | 'desc' } | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [rowsPerPage, setRowsPerPage] = useState(15);
+  const [rowsPerPage, setRowsPerPage] = useState(50);
 
   // Navigate to specific row when targetRow changes
   useEffect(() => {
@@ -500,8 +500,9 @@ export default function EditableDataTable({ data, onDataChange, title, highlight
             customStyles={customStyles}
             pagination
             paginationPerPage={rowsPerPage}
-            paginationRowsPerPageOptions={[10, 15, 25, 50]}
+            paginationRowsPerPageOptions={[25, 50, 100, 150]}
             paginationDefaultPage={currentPage}
+            paginationServer={false}
             onChangePage={setCurrentPage}
             onChangeRowsPerPage={(newRowsPerPage) => {
               setRowsPerPage(newRowsPerPage);
