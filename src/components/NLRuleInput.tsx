@@ -137,7 +137,7 @@ export default function NLRuleInput({
         .trim();
 
       // Extract JSON from response if it contains explanation
-      const jsonMatch = ruleJson.match(/\{.*\}/s);
+      const jsonMatch = ruleJson.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         ruleJson = jsonMatch[0];
       }
@@ -221,15 +221,13 @@ export default function NLRuleInput({
       case 'coRun':
         return `Co-run: ${rule.tasks?.join(', ')}`;
       case 'slotRestriction':
-        return `Slot restriction: ${rule.group} (min ${rule.minCommonSlots} slots)`;
+        return `Slot restriction: ${rule.targetGroup} (min ${rule.minCommonSlots} slots)`;
       case 'loadLimit':
-        return `Load limit: ${rule.group} (max ${rule.maxSlotsPerPhase} per phase)`;
+        return `Load limit: ${rule.workerGroup} (max ${rule.maxSlotsPerPhase} per phase)`;
       case 'phaseWindow':
-        const phases = rule.phases ? rule.phases.join(', ') : 
+        const phases = rule.allowedPhases ? rule.allowedPhases.join(', ') : 
                      rule.phaseRange ? `${rule.phaseRange.start}-${rule.phaseRange.end}` : 'unknown';
-        return `Phase window: ${rule.task} in phases ${phases}`;
-      case 'precedence':
-        return `Precedence: ${rule.before} before ${rule.after}`;
+        return `Phase window: ${rule.taskId} in phases ${phases}`;
       default:
         return `${rule.type} rule`;
     }

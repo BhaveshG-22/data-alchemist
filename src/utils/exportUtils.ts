@@ -1,6 +1,6 @@
 import Papa from 'papaparse';
 import { saveAs } from 'file-saver';
-import { ParsedData } from '@/types/ParsedData';
+import { ParsedData } from '@/utils/fileParser';
 
 export interface ExportRule {
   type: string;
@@ -114,8 +114,24 @@ export function exportAllData(
     const exportData: ExportData = {
       version: '1.0',
       generated: new Date().toISOString(),
-      rules,
-      priorities
+      metadata: {
+        exportedBy: 'Data Alchemist App',
+        totalRecords: {
+          clients: clientsData?.rows.length || 0,
+          workers: workersData?.rows.length || 0,
+          tasks: tasksData?.rows.length || 0,
+        },
+        validationSummary: {
+          totalRules: rules.length,
+          activeRules: rules.filter(r => r.active !== false).length,
+        },
+      },
+      businessRules: rules,
+      prioritizationSettings: {
+        weights: priorities,
+        criteria: Object.keys(priorities),
+        lastUpdated: new Date().toISOString(),
+      }
     };
 
     exportJSONFile(exportData, 'rules.json');
@@ -162,8 +178,24 @@ export async function exportAsZip(
     const exportData: ExportData = {
       version: '1.0',
       generated: new Date().toISOString(),
-      rules,
-      priorities
+      metadata: {
+        exportedBy: 'Data Alchemist App',
+        totalRecords: {
+          clients: clientsData?.rows.length || 0,
+          workers: workersData?.rows.length || 0,
+          tasks: tasksData?.rows.length || 0,
+        },
+        validationSummary: {
+          totalRules: rules.length,
+          activeRules: rules.filter(r => r.active !== false).length,
+        },
+      },
+      businessRules: rules,
+      prioritizationSettings: {
+        weights: priorities,
+        criteria: Object.keys(priorities),
+        lastUpdated: new Date().toISOString(),
+      }
     };
 
     zip.file('rules.json', JSON.stringify(exportData, null, 2));

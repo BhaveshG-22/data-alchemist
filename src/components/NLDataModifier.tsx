@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, MessageSquare, Eye, Check, X, Undo2, Redo2, History, Clock, Template } from 'lucide-react';
+import { Loader2, MessageSquare, Eye, Check, X, Undo2, Redo2, History, Clock, FileText } from 'lucide-react';
 import { useDataModificationHistory } from '@/hooks/useDataModificationHistory';
 // import DiffVisualization from './DiffVisualization';
 // import CommandTemplateSelector from './CommandTemplateSelector';
@@ -293,7 +293,7 @@ export default function NLDataModifier({ data, onDataChange, tableName = 'data' 
                 disabled={isLoading || showPreview}
                 className="flex items-center gap-1"
               >
-                <Template className="h-3 w-3" />
+                <FileText className="h-3 w-3" />
                 Templates
               </Button> */}
             </div>

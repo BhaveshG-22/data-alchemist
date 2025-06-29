@@ -14,13 +14,12 @@ export const parseFile = (file: File): Promise<ParsedData> => {
       // First try with Papa Parse with robust configuration
       Papa.parse(file, {
         header: true,
-        skipEmptyLines: true,
+        skipEmptyLines: 'greedy',
         quoteChar: '"',
         escapeChar: '"',
         delimiter: ',',
         newline: '\n',
         dynamicTyping: false,
-        skipEmptyLines: 'greedy',
         fastMode: false, // Disable fast mode for better error handling
         transformHeader: (header) => {
           return header ? header.toString().trim() : '';
@@ -52,7 +51,7 @@ export const parseFile = (file: File): Promise<ParsedData> => {
             
             // Only reject on critical errors, not field mismatches
             const criticalErrors = results.errors.filter(error => 
-              error.type !== 'FieldMismatch' && error.type !== 'TooManyFields'
+              !['FieldMismatch', 'TooFewFields', 'TooManyFields'].includes(error.type as string)
             );
             
             if (criticalErrors.length > 0) {

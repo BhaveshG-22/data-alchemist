@@ -1,7 +1,25 @@
 {
   "name": "data-alchemist-app",
-  "version": "0.1.0",
+  "version": "1.0.0",
+  "description": "Comprehensive data validation and management application for CSV/XLSX files with AI-powered features",
   "private": true,
+  "homepage": "https://github.com/data-alchemist/data-alchemist-app",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/data-alchemist/data-alchemist-app.git"
+  },
+  "keywords": [
+    "data-validation",
+    "csv-processing",
+    "xlsx-processing",
+    "business-rules",
+    "ai-powered",
+    "natural-language-search",
+    "data-management",
+    "nextjs",
+    "typescript"
+  ],
+  "author": "Data Alchemist Team",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

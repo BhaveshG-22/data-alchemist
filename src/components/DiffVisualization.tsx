@@ -73,7 +73,7 @@ export default function DiffVisualization({ originalData, modifications, summary
               </span>
               <ArrowRight className="h-3 w-3 text-gray-400" />
               <span className="px-2 py-1 bg-green-100 text-green-800 rounded text-xs">
-                {formatValue(mod.data[field])}
+                {formatValue(mod.data?.[field])}
               </span>
             </div>
           </div>

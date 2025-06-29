@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Template, Search, ChevronDown, ChevronUp, Sparkles } from 'lucide-react';
+import { FileText, Search, ChevronDown, ChevronUp, Sparkles } from 'lucide-react';
 import { useCommandTemplates } from '@/hooks/useCommandTemplates';
 
 interface ParsedData {
@@ -71,7 +71,7 @@ export default function CommandTemplateSelector({
       <div className="px-6 py-4 border-b border-gray-200">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Template className="h-5 w-5 text-purple-600" />
+            <FileText className="h-5 w-5 text-purple-600" />
             <h3 className="text-lg font-semibold">Command Templates</h3>
           </div>
           <button

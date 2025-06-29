@@ -154,26 +154,32 @@ export function validateNLGeneratedRule(
     switch (rule.type) {
       case 'slotRestriction':
         // Add default groupType if not specified
-        if (!normalizedRule.groupType) {
+        if (normalizedRule && !normalizedRule.groupType) {
           normalizedRule.groupType = availableClientGroups.includes(rule.group) ? 'client' : 'worker';
         }
         // Map group to appropriate field names for compatibility
-        normalizedRule.targetGroup = rule.group;
-        normalizedRule.minCommonSlots = rule.minCommonSlots;
+        if (normalizedRule) {
+          normalizedRule.targetGroup = rule.group;
+          normalizedRule.minCommonSlots = rule.minCommonSlots;
+        }
         break;
         
       case 'loadLimit':
         // Map group to workerGroup for compatibility
-        normalizedRule.workerGroup = rule.group;
-        normalizedRule.maxSlotsPerPhase = rule.maxSlotsPerPhase;
+        if (normalizedRule) {
+          normalizedRule.workerGroup = rule.group;
+          normalizedRule.maxSlotsPerPhase = rule.maxSlotsPerPhase;
+        }
         break;
         
       case 'phaseWindow':
         // Map task to taskId for compatibility
-        normalizedRule.taskId = rule.task;
-        if (rule.phases) {
-          // Convert numeric phases to Phase strings for compatibility
-          normalizedRule.allowedPhases = rule.phases.map((p: number) => `Phase ${p}`);
+        if (normalizedRule) {
+          normalizedRule.taskId = rule.task;
+          if (rule.phases) {
+            // Convert numeric phases to Phase strings for compatibility
+            normalizedRule.allowedPhases = rule.phases.map((p: number) => `Phase ${p}`);
+          }
         }
         break;
     }
