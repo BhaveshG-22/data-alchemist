@@ -6,7 +6,7 @@ import IssuesSidebar from './IssuesSidebar';
 import RuleInputUI from './RuleInputUI';
 // import ValidationSummary from './ValidationSummary';
 import { parseFile, ParsedData } from '@/utils/fileParser';
-import { 
+import {
   runAllValidations,
   ValidationIssue,
   ValidatorContext,
@@ -34,7 +34,7 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
     workers: null,
     tasks: null,
   });
-  
+
   const [loading, setLoading] = useState(true);
   const [parsingProgress, setParsingProgress] = useState<{
     currentFile: string;
@@ -61,7 +61,7 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
     workers: null,
     tasks: null,
   });
-  
+
   const [activeTab, setActiveTab] = useState<'clients' | 'workers' | 'tasks'>('clients');
   const [validationIssues, setValidationIssues] = useState<ValidationIssue[]>([]);
   const [highlightedCells, setHighlightedCells] = useState<Array<{ row: number; column: string }>>([]);
@@ -83,10 +83,10 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
   // New modular validation using the validators module
   const validateData = useCallback((parsedData: { clients: ParsedData | null; workers: ParsedData | null; tasks: ParsedData | null }, rules: BusinessRule[] = []): ValidationIssue[] => {
     console.log('🔍 Starting modular validation...');
-    
+
     // Convert ParsedData to ValidatedParsedData format
     const validationData: ValidatedParsedData = {};
-    
+
     if (parsedData.clients) {
       validationData.clients = {
         name: 'clients',
@@ -94,19 +94,19 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
         rows: parsedData.clients.rows
       };
     }
-    
+
     if (parsedData.workers) {
       validationData.workers = {
-        name: 'workers', 
+        name: 'workers',
         headers: parsedData.workers.headers,
         rows: parsedData.workers.rows
       };
     }
-    
+
     if (parsedData.tasks) {
       validationData.tasks = {
         name: 'tasks',
-        headers: parsedData.tasks.headers, 
+        headers: parsedData.tasks.headers,
         rows: parsedData.tasks.rows
       };
     }
@@ -128,7 +128,7 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
     // Run validation
     const result = runAllValidations(context);
     console.log(`✅ Validation complete: ${result.issues.length} issues found`);
-    
+
     return result.issues;
   }, []);
 
@@ -140,7 +140,7 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
   ) => {
     try {
       console.log('🤖 Requesting AI column mapping for:', fileType);
-      
+
       const response = await fetch('/api/ai-column-mapping', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -157,7 +157,7 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
 
       const result = await response.json();
       console.log('✅ AI mapping suggestions received:', result);
-      
+
       return result;
     } catch (error) {
       console.error('AI column mapping failed:', error);
@@ -178,7 +178,7 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
     });
 
     // Map headers
-    const newHeaders = parsedData.headers.map(header => 
+    const newHeaders = parsedData.headers.map(header =>
       mappingMap.get(header) || header
     );
 
@@ -199,166 +199,174 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
   }, []);
 
   const parseFiles = useCallback(async () => {
-      setLoading(true);
-      setParsingComplete(false);
-      setParsingSummary(null);
-      const newParsedData: {
-        clients: ParsedData | null;
-        workers: ParsedData | null;
-        tasks: ParsedData | null;
-      } = { clients: null, workers: null, tasks: null };
-      
-      const newErrors: {
-        clients: string | null;
-        workers: string | null;
-        tasks: string | null;
-      } = { clients: null, workers: null, tasks: null };
+    setLoading(true);
+    setParsingComplete(false);
+    setParsingSummary(null);
+    const newParsedData: {
+      clients: ParsedData | null;
+      workers: ParsedData | null;
+      tasks: ParsedData | null;
+    } = { clients: null, workers: null, tasks: null };
 
-      // Parse and potentially apply AI column mapping for each file
-      const fileTypes: Array<'clients' | 'workers' | 'tasks'> = ['clients', 'workers', 'tasks'];
-      const uploadedFilesList = fileTypes.filter(type => uploadedFiles[type]);
-      const aiMappingsApplied: Array<{
-        file: string;
-        mappings: Array<{ from: string; to: string }>;
-        confidence: number;
-      }> = [];
+    const newErrors: {
+      clients: string | null;
+      workers: string | null;
+      tasks: string | null;
+    } = { clients: null, workers: null, tasks: null };
 
-      setParsingProgress({
-        currentFile: '',
-        step: 'Initializing...',
-        filesProcessed: 0,
-        totalFiles: uploadedFilesList.length
-      });
-      
-      for (let i = 0; i < fileTypes.length; i++) {
-        const fileType = fileTypes[i];
-        const file = uploadedFiles[fileType];
-        if (!file) continue;
+    // Parse and potentially apply AI column mapping for each file
+    const fileTypes: Array<'clients' | 'workers' | 'tasks'> = ['clients', 'workers', 'tasks'];
+    const uploadedFilesList = fileTypes.filter(type => uploadedFiles[type]);
+    const aiMappingsApplied: Array<{
+      file: string;
+      mappings: Array<{ from: string; to: string }>;
+      confidence: number;
+    }> = [];
 
-        try {
+    setParsingProgress({
+      currentFile: '',
+      step: 'Initializing...',
+      filesProcessed: 0,
+      totalFiles: uploadedFilesList.length
+    });
+
+    for (let i = 0; i < fileTypes.length; i++) {
+      const fileType = fileTypes[i];
+      const file = uploadedFiles[fileType];
+      if (!file) continue;
+
+      try {
+        setParsingProgress({
+          currentFile: fileType,
+          step: `Parsing ${fileType} file...`,
+          filesProcessed: i,
+          totalFiles: uploadedFilesList.length
+        });
+
+        // Initial parsing
+        const initialParsedData = await parseFile(file);
+
+        // Create sample data for AI analysis
+        const sampleData: Record<string, unknown[]> = {};
+        initialParsedData.headers.forEach(header => {
+          sampleData[header] = initialParsedData.rows
+            .slice(0, 5)
+            .map(row => row[header])
+            .filter(val => val !== null && val !== undefined && val !== '');
+        });
+
+        // Check if AI column mapping might be beneficial (more lenient detection)
+        const requiredColumnsForFile = ['ClientID', 'ClientName', 'WorkerID', 'WorkerName', 'TaskID', 'TaskName', 'PriorityLevel', 'Duration', 'Skills', 'Category'];
+        const hasWrongHeaders = initialParsedData.headers.some(header =>
+          !requiredColumnsForFile.some(required =>
+            header.toLowerCase().replace(/[_\s-]/g, '') === required.toLowerCase().replace(/[_\s-]/g, '') ||
+            header.toLowerCase().includes(required.toLowerCase().replace(/[_\s-]/g, '').slice(0, -2)) // partial match
+          )
+        ) && initialParsedData.headers.length > 0;
+
+        let finalParsedData = initialParsedData;
+
+        if (hasWrongHeaders) {
+          console.log(`🔍 Potentially misnamed headers detected in ${fileType}, trying AI mapping...`);
+
           setParsingProgress({
             currentFile: fileType,
-            step: `Parsing ${fileType} file...`,
+            step: `Analyzing ${fileType} columns with AI...`,
             filesProcessed: i,
             totalFiles: uploadedFilesList.length
           });
 
-          // Initial parsing
-          const initialParsedData = await parseFile(file);
-          
-          // Create sample data for AI analysis
-          const sampleData: Record<string, unknown[]> = {};
-          initialParsedData.headers.forEach(header => {
-            sampleData[header] = initialParsedData.rows
-              .slice(0, 5)
-              .map(row => row[header])
-              .filter(val => val !== null && val !== undefined && val !== '');
-          });
+          // Get AI mapping suggestions
+          const mappingSuggestions = await getColumnMappingSuggestions(
+            fileType,
+            initialParsedData.headers,
+            sampleData
+          );
 
-          // Check if AI column mapping might be beneficial (more lenient detection)
-          const requiredColumnsForFile = ['ClientID', 'ClientName', 'WorkerID', 'WorkerName', 'TaskID', 'TaskName', 'PriorityLevel', 'Duration', 'Skills', 'Category'];
-          const hasWrongHeaders = initialParsedData.headers.some(header => 
-            !requiredColumnsForFile.some(required => 
-              header.toLowerCase().replace(/[_\s-]/g, '') === required.toLowerCase().replace(/[_\s-]/g, '') ||
-              header.toLowerCase().includes(required.toLowerCase().replace(/[_\s-]/g, '').slice(0, -2)) // partial match
-            )
-          ) && initialParsedData.headers.length > 0;
+          // If we got good mapping suggestions with high confidence, apply them
+          if (mappingSuggestions &&
+            mappingSuggestions.mappings?.length > 0 &&
+            mappingSuggestions.confidence > 0.7) {
 
-          let finalParsedData = initialParsedData;
-
-          if (hasWrongHeaders) {
-            console.log(`🔍 Potentially misnamed headers detected in ${fileType}, trying AI mapping...`);
-            
             setParsingProgress({
               currentFile: fileType,
-              step: `Analyzing ${fileType} columns with AI...`,
+              step: `Applying AI column mappings to ${fileType}...`,
               filesProcessed: i,
               totalFiles: uploadedFilesList.length
             });
-            
-            // Get AI mapping suggestions
-            const mappingSuggestions = await getColumnMappingSuggestions(
-              fileType,
-              initialParsedData.headers,
-              sampleData
-            );
 
-            // If we got good mapping suggestions with high confidence, apply them
-            if (mappingSuggestions && 
-                mappingSuggestions.mappings?.length > 0 && 
-                mappingSuggestions.confidence > 0.7) {
-              
-              setParsingProgress({
-                currentFile: fileType,
-                step: `Applying AI column mappings to ${fileType}...`,
-                filesProcessed: i,
-                totalFiles: uploadedFilesList.length
-              });
-              
-              console.log(`✨ Applying AI column mappings for ${fileType} (confidence: ${mappingSuggestions.confidence})`);
-              finalParsedData = applyColumnMappings(initialParsedData, mappingSuggestions.mappings);
-              
-              // Store mapping info for summary
-              aiMappingsApplied.push({
-                file: fileType,
-                mappings: mappingSuggestions.mappings.map((m: { originalHeader: string; suggestedHeader: string }) => ({
-                  from: m.originalHeader,
-                  to: m.suggestedHeader
-                })),
-                confidence: mappingSuggestions.confidence
-              });
-              
-              console.log(`📝 Applied ${mappingSuggestions.mappings.length} column mappings:`, 
-                mappingSuggestions.mappings.map((m: { originalHeader: string; suggestedHeader: string }) => `${m.originalHeader} → ${m.suggestedHeader}`));
-              
-            } else if (mappingSuggestions && mappingSuggestions.mappings?.length > 0) {
-              // Store suggestions for user confirmation dialog
-              setColumnMappingSuggestions(mappingSuggestions);
-              setCurrentMappingFile(fileType);
-              setShowColumnMappingDialog(true);
-            }
+            console.log(`✨ Applying AI column mappings for ${fileType} (confidence: ${mappingSuggestions.confidence})`);
+            finalParsedData = applyColumnMappings(initialParsedData, mappingSuggestions.mappings);
+
+            // Store mapping info for summary
+            aiMappingsApplied.push({
+              file: fileType,
+              mappings: mappingSuggestions.mappings.map((m: { originalHeader: string; suggestedHeader: string }) => ({
+                from: m.originalHeader,
+                to: m.suggestedHeader
+              })),
+              confidence: mappingSuggestions.confidence
+            });
+
+            console.log(`📝 Applied ${mappingSuggestions.mappings.length} column mappings:`,
+              mappingSuggestions.mappings.map((m: { originalHeader: string; suggestedHeader: string }) => `${m.originalHeader} → ${m.suggestedHeader}`));
+
+          } else if (mappingSuggestions && mappingSuggestions.mappings?.length > 0) {
+            // Store suggestions for user confirmation dialog
+            setColumnMappingSuggestions(mappingSuggestions);
+            setCurrentMappingFile(fileType);
+            setShowColumnMappingDialog(true);
           }
-
-          newParsedData[fileType] = finalParsedData;
-          
-        } catch (error) {
-          newErrors[fileType] = (error as Error).message;
         }
-      }
 
-      setParsingProgress({
-        currentFile: '',
-        step: 'Validating parsed data...',
-        filesProcessed: uploadedFilesList.length,
-        totalFiles: uploadedFilesList.length
+        newParsedData[fileType] = finalParsedData;
+
+      } catch (error) {
+        newErrors[fileType] = (error as Error).message;
+      }
+    }
+
+    setParsingProgress({
+      currentFile: '',
+      step: 'Validating parsed data...',
+      filesProcessed: uploadedFilesList.length,
+      totalFiles: uploadedFilesList.length
+    });
+
+    // Validate data using the new modular system
+    const allIssues = validateData(newParsedData, businessRules);
+
+    // Always store the parsed data (whether AI-enhanced or not)
+    setParsedData(newParsedData);
+    setErrors(newErrors);
+
+    // Create summary if AI mappings were applied
+    if (aiMappingsApplied.length > 0) {
+      const totalMappings = aiMappingsApplied.reduce((sum, file) => sum + file.mappings.length, 0);
+      setParsingSummary({
+        aiMappingsApplied,
+        totalFiles: uploadedFilesList.length,
+        totalMappings
       });
-
-      // Validate data using the new modular system
-      const allIssues = validateData(newParsedData, businessRules);
-
-      // Always store the parsed data (whether AI-enhanced or not)
-      setParsedData(newParsedData);
-      setErrors(newErrors);
-
-      // Create summary if AI mappings were applied
-      if (aiMappingsApplied.length > 0) {
-        const totalMappings = aiMappingsApplied.reduce((sum, file) => sum + file.mappings.length, 0);
-        setParsingSummary({
-          aiMappingsApplied,
-          totalFiles: uploadedFilesList.length,
-          totalMappings
-        });
-        setParsingComplete(true);
-        setLoading(false);
-      } else {
-        setValidationIssues(allIssues);
-        setLoading(false);
-      }
-    }, [uploadedFiles, validateData, getColumnMappingSuggestions, applyColumnMappings, businessRules]);
+      setParsingComplete(true);
+      setLoading(false);
+    } else {
+      setValidationIssues(allIssues);
+      setLoading(false);
+    }
+  }, [uploadedFiles, validateData, getColumnMappingSuggestions, applyColumnMappings]);
 
   useEffect(() => {
     parseFiles();
   }, [uploadedFiles, parseFiles]);
+
+  // Re-validate when business rules change (without re-parsing files)
+  useEffect(() => {
+    if (parsedData.clients || parsedData.workers || parsedData.tasks) {
+      const allIssues = validateData(parsedData, businessRules);
+      setValidationIssues(allIssues);
+    }
+  }, [businessRules, parsedData, validateData]);
 
   // Cleanup timeout on unmount
   useEffect(() => {
@@ -374,7 +382,7 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
       ...parsedData,
       [type]: newData
     };
-    
+
     setParsedData(updatedParsedData);
 
     // Re-validate all data when it changes using the new system
@@ -384,7 +392,7 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
 
   const handleIssueClick = (issue: ValidationIssue) => {
     console.log('Issue clicked:', issue);
-    
+
     // Clear any existing timeout
     if (hoverTimeout) {
       clearTimeout(hoverTimeout);
@@ -400,34 +408,34 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
     if (issue.row === -1 && issue.column && issue.sheet) {
       // Highlight the header for missing/unexpected columns
       setHighlightedHeaders([{ sheet: issue.sheet, header: issue.column }]);
-      
+
       // Set timeout to auto-remove highlight after 4 seconds
       const timeoutId = setTimeout(() => {
         setHighlightedHeaders([]);
         setHoverTimeout(null);
       }, 4000);
-      
+
       setHoverTimeout(timeoutId);
     }
     // Handle regular cell highlighting and navigation
     else if (issue.row !== undefined && issue.column) {
       // Navigate to the page containing this row
       setTargetRow(issue.row);
-      
-      setHoveredIssue({ 
-        row: issue.row, 
-        column: issue.column, 
+
+      setHoveredIssue({
+        row: issue.row,
+        column: issue.column,
         issueType: issue.type,
-        category: issue.category 
+        category: issue.category
       });
-      
+
       // Set timeout to auto-remove hover after 4 seconds
       const timeoutId = setTimeout(() => {
         setHoveredIssue(null);
         setTargetRow(undefined);
         setHoverTimeout(null);
       }, 4000);
-      
+
       setHoverTimeout(timeoutId);
     }
   };
@@ -441,19 +449,19 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
 
     // Only highlight if the issue has a specific row and column
     if (issue.row !== undefined && issue.column) {
-      setHoveredIssue({ 
-        row: issue.row, 
-        column: issue.column, 
+      setHoveredIssue({
+        row: issue.row,
+        column: issue.column,
         issueType: issue.type,
-        category: issue.category 
+        category: issue.category
       });
-      
+
       // Set timeout to auto-remove hover after 4 seconds
       const timeoutId = setTimeout(() => {
         setHoveredIssue(null);
         setHoverTimeout(null);
       }, 4000);
-      
+
       setHoverTimeout(timeoutId);
     }
   };
@@ -464,7 +472,7 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
       clearTimeout(hoverTimeout);
       setHoverTimeout(null);
     }
-    
+
     setHoveredIssue(null);
   };
 
@@ -472,7 +480,7 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
     console.log('AI fix not implemented for missing columns - this is a detection-only validation');
     console.log('Issue:', issue);
     console.log('AI suggestion:', aiSuggestion);
-    
+
     // For missing columns, we only detect and report - no auto-fixing
     // Users should manually add the missing columns to their spreadsheet
   };
@@ -487,20 +495,20 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
     if (!columnMappingSuggestions || !currentMappingFile) return;
 
     console.log(`✅ User accepted AI column mappings for ${currentMappingFile}`);
-    
+
     // Apply the mappings to the current parsed data
     const currentData = parsedData[currentMappingFile];
     if (currentData) {
       const mappedData = applyColumnMappings(currentData, columnMappingSuggestions.mappings);
-      
+
       // Update the parsed data
       const updatedParsedData = {
         ...parsedData,
         [currentMappingFile]: mappedData
       };
-      
+
       setParsedData(updatedParsedData);
-      
+
       // Re-validate with the new data
       const newIssues = validateData(updatedParsedData, businessRules);
       setValidationIssues(newIssues);
@@ -523,7 +531,7 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
     console.log('✅ User confirmed parsing summary, proceeding to validation');
     setParsingComplete(false);
     setParsingSummary(null);
-    
+
     // Re-validate the already stored data and set validation issues
     const allIssues = validateData(parsedData, businessRules);
     setValidationIssues(allIssues);
@@ -532,33 +540,56 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
   // Handle business rule changes
   const handleRulesChange = useCallback((newRules: BusinessRule[]) => {
     setBusinessRules(newRules);
-    
-    // Re-validate data with new rules
-    const allIssues = validateData(parsedData, newRules);
-    setValidationIssues(allIssues);
-  }, [parsedData, validateData]);
+    // Note: Validation will be triggered automatically by the useEffect above
+  }, []);
 
   // Get available task IDs from parsed data
   const getAvailableTaskIds = useCallback((): string[] => {
     if (!parsedData.tasks || !parsedData.tasks.headers.includes('TaskID')) {
       return [];
     }
-    
+
     return parsedData.tasks.rows
       .map(row => String(row.TaskID || '').trim())
       .filter(taskId => taskId !== '');
   }, [parsedData.tasks]);
+
+  // Get available client groups from parsed data
+  const getAvailableClientGroups = useCallback((): string[] => {
+    if (!parsedData.clients || !parsedData.clients.headers.includes('GroupTag')) {
+      return [];
+    }
+    
+    const groups = parsedData.clients.rows
+      .map(row => String(row.GroupTag || '').trim())
+      .filter(group => group !== '');
+    
+    return [...new Set(groups)]; // Remove duplicates
+  }, [parsedData.clients]);
+
+  // Get available worker groups from parsed data
+  const getAvailableWorkerGroups = useCallback((): string[] => {
+    if (!parsedData.workers || !parsedData.workers.headers.includes('WorkerGroup')) {
+      return [];
+    }
+    
+    const groups = parsedData.workers.rows
+      .map(row => String(row.WorkerGroup || '').trim())
+      .filter(group => group !== '');
+    
+    return [...new Set(groups)]; // Remove duplicates
+  }, [parsedData.workers]);
 
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center max-w-md w-full mx-4">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-6"></div>
-          
+
           <h2 className="text-xl font-semibold text-gray-900 mb-4">
             Processing Your Files
           </h2>
-          
+
           <div className="bg-white rounded-lg p-6 shadow-sm border">
             <div className="mb-4">
               <div className="flex justify-between items-center mb-2">
@@ -568,15 +599,15 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
                 </span>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-2">
-                <div 
-                  className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
-                  style={{ 
-                    width: `${parsingProgress.totalFiles > 0 ? (parsingProgress.filesProcessed / parsingProgress.totalFiles) * 100 : 0}%` 
+                <div
+                  className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                  style={{
+                    width: `${parsingProgress.totalFiles > 0 ? (parsingProgress.filesProcessed / parsingProgress.totalFiles) * 100 : 0}%`
                   }}
                 ></div>
               </div>
             </div>
-            
+
             <div className="space-y-2">
               {parsingProgress.currentFile && (
                 <div className="flex items-center space-x-2">
@@ -589,7 +620,7 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
               <p className="text-sm text-gray-600">{parsingProgress.step}</p>
             </div>
           </div>
-          
+
           <div className="mt-4 text-xs text-gray-500">
             LLM is analyzing your data for optimal column mapping
           </div>
@@ -649,7 +680,7 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
                       {Math.round(fileMapping.confidence * 100)}% confidence
                     </span>
                   </div>
-                  
+
                   <div className="space-y-2">
                     {fileMapping.mappings.map((mapping, mappingIndex) => (
                       <div key={mappingIndex} className="flex items-center text-sm">
@@ -710,11 +741,10 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
           <div className="flex items-center space-x-3">
             <button
               onClick={() => setShowRuleInput(!showRuleInput)}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2 ${
-                showRuleInput
+              className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2 ${showRuleInput
                   ? 'bg-purple-600 text-white hover:bg-purple-700'
                   : 'bg-white text-purple-600 border border-purple-600 hover:bg-purple-50'
-              }`}
+                }`}
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -726,14 +756,13 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
                 </span>
               )}
             </button>
-            <button 
+            <button
               onClick={onProceed}
               disabled={validationIssues.some(issue => issue.type === 'error')}
-              className={`px-6 py-2 rounded-lg font-medium transition-colors ${
-                validationIssues.some(issue => issue.type === 'error')
+              className={`px-6 py-2 rounded-lg font-medium transition-colors ${validationIssues.some(issue => issue.type === 'error')
                   ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                   : 'bg-blue-600 text-white hover:bg-blue-700'
-              }`}
+                }`}
             >
               Proceed to Analysis
             </button>
@@ -751,15 +780,17 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
               rules={businessRules}
               onRulesChange={handleRulesChange}
               availableTasks={getAvailableTaskIds()}
+              availableClientGroups={getAvailableClientGroups()}
+              availableWorkerGroups={getAvailableWorkerGroups()}
             />
           )}
-          
+
           {/* Validation Summary */}
           {/* <ValidationSummary 
             issues={validationIssues} 
             onIssueClick={handleIssueClick}
           /> */}
-          
+
           <TabbedDataView
             parsedData={parsedData}
             errors={errors}
@@ -802,21 +833,21 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
                 </svg>
               </button>
             </div>
-            
+
             <div className="mb-4">
               <p className="text-sm text-gray-600 mb-3">
-                AI detected potentially misnamed columns in your <strong>{currentMappingFile}</strong> file. 
+                AI detected potentially misnamed columns in your <strong>{currentMappingFile}</strong> file.
                 Here are intelligent mapping suggestions:
               </p>
-              
+
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
                 <div className="flex items-center text-sm text-blue-800">
                   <div className="flex-shrink-0 w-16 text-right font-medium">Confidence:</div>
                   <div className="ml-2">
                     <div className="flex items-center">
                       <div className="w-24 bg-blue-200 rounded-full h-2 mr-2">
-                        <div 
-                          className="bg-blue-600 h-2 rounded-full" 
+                        <div
+                          className="bg-blue-600 h-2 rounded-full"
                           style={{ width: `${Math.round(columnMappingSuggestions.confidence * 100)}%` }}
                         ></div>
                       </div>
@@ -849,7 +880,7 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
                   </div>
                 </div>
               ))}
-              
+
               {columnMappingSuggestions.unmappedColumns?.length > 0 && (
                 <div className="mt-4">
                   <h5 className="text-sm font-medium text-gray-700 mb-2">Unmapped Columns:</h5>
@@ -862,7 +893,7 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
                   </div>
                 </div>
               )}
-              
+
               {columnMappingSuggestions.missingColumns?.length > 0 && (
                 <div className="mt-4">
                   <h5 className="text-sm font-medium text-gray-700 mb-2">Still Missing:</h5>

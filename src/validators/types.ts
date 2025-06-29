@@ -43,10 +43,36 @@ export interface ValidatorContext {
 
 export interface BusinessRule {
   id: string;
-  type: 'coRun' | 'conflicting' | 'priority' | 'resource';
-  tasks: string[];
+  type: 'coRun' | 'slotRestriction' | 'loadLimit' | 'phaseWindow' | 'patternMatch' | 'precedenceOverride';
   description?: string;
   active: boolean;
+  priority?: number;
+  
+  // Co-run specific
+  tasks?: string[];
+  
+  // Slot-restriction specific
+  targetGroup?: string;
+  groupType?: 'client' | 'worker';
+  minCommonSlots?: number;
+  
+  // Load-limit specific
+  workerGroup?: string;
+  maxSlotsPerPhase?: number;
+  
+  // Phase-window specific
+  taskId?: string;
+  allowedPhases?: string[];
+  phaseRange?: { start: number; end: number };
+  
+  // Pattern-match specific
+  pattern?: string;
+  ruleTemplate?: string;
+  parameters?: Record<string, unknown>;
+  
+  // Precedence override specific
+  scope?: 'global' | 'specific';
+  overrides?: string[];
 }
 
 export interface ValidationConfig {
