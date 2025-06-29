@@ -531,14 +531,6 @@ export default function IssuesSidebar({ issues, parsedData, activeTab, onIssueCl
         )}
       </div>
 
-      {/* Footer Actions - Fixed */}
-      {filteredIssues.length > 0 && (
-        <div className="flex-shrink-0 p-4 border-t border-gray-200 bg-gray-50">
-          <button className="w-full bg-blue-600 text-white text-sm py-2 px-3 rounded-lg hover:bg-blue-700 transition-colors">
-            Auto-fix Issues
-          </button>
-        </div>
-      )}
     </div>
   );
 }

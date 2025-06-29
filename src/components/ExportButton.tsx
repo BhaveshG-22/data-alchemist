@@ -147,14 +147,17 @@ export default function ExportButton({
 
   return (
     <div className="relative group">
-      <div className="flex items-center shadow-lg rounded-xl overflow-hidden bg-gradient-to-r from-blue-600 via-blue-600 to-blue-700 hover:from-blue-700 hover:via-blue-700 hover:to-blue-800 transition-all duration-200">
+      <div className={`flex items-center shadow-lg rounded-xl overflow-hidden bg-gradient-to-r from-blue-600 via-blue-600 to-blue-700 transition-all duration-200 ${
+        isDisabled 
+          ? 'opacity-60 pointer-events-none' 
+          : 'hover:from-blue-700 hover:via-blue-700 hover:to-blue-800'
+      }`}>
         <button
-          onClick={handleExport}
-          disabled={isDisabled}
-          className={`flex items-center justify-center px-6 py-3 font-semibold text-sm transition-all duration-200 relative ${
+          onClick={isDisabled ? undefined : handleExport}
+          className={`flex items-center justify-center px-6 py-3 font-semibold text-sm transition-all duration-200 relative text-white ${
             isDisabled
-              ? 'bg-gradient-to-r from-gray-400 to-gray-500 text-gray-200 cursor-not-allowed opacity-70'
-              : 'text-white hover:shadow-xl focus:ring-4 focus:ring-blue-300 focus:ring-opacity-50'
+              ? 'cursor-not-allowed'
+              : 'hover:shadow-xl focus:ring-4 focus:ring-blue-300 focus:ring-opacity-50'
           }`}
         >
           {isExporting ? (
@@ -175,15 +178,14 @@ export default function ExportButton({
           )}
         </button>
         
-        <div className={`w-px h-8 ${isDisabled ? 'bg-gray-400' : 'bg-blue-500'}`}></div>
+        <div className="w-px h-8 bg-blue-500"></div>
         
         <button
-          onClick={() => setShowDropdown(!showDropdown)}
-          disabled={isDisabled}
-          className={`flex items-center justify-center px-4 py-3 font-medium transition-all duration-200 relative ${
+          onClick={isDisabled ? undefined : () => setShowDropdown(!showDropdown)}
+          className={`flex items-center justify-center px-4 py-3 font-medium transition-all duration-200 relative text-white ${
             isDisabled
-              ? 'text-gray-200 cursor-not-allowed'
-              : 'text-white hover:bg-white hover:bg-opacity-10 focus:ring-4 focus:ring-blue-300 focus:ring-opacity-50'
+              ? 'cursor-not-allowed'
+              : 'hover:bg-white hover:bg-opacity-10 focus:ring-4 focus:ring-blue-300 focus:ring-opacity-50'
           }`}
         >
           <svg 
