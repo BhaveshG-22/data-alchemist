@@ -1,6 +1,11 @@
 # 🧪 Data Alchemist
 Data Alchemist is an intelligent data validation and transformation tool designed to help users clean, configure, and manage structured datasets (CSV/XLSX) for clients, workers, and tasks. It combines AI-powered automation with intuitive UI controls to streamline workflows and reduce manual errors.
 
+## 🎬 Live Demo
+[![Watch the demo](DemoThumbnail.png)](https://cap.so/s/2t4nc5593ycsm30)
+
+*Click the image above to watch a live demonstration of Data Alchemist in action*
+
 ## 🚀 Bonus X-Factor Features
 These features go beyond standard requirements to deliver a polished, intelligent user experience:
 
