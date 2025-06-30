@@ -412,11 +412,11 @@ Return ONLY the JavaScript expression (no 'return' keyword, no function wrapper)
   ];
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg shadow-sm">
+    <div className="bg-background border border-border rounded-lg shadow-sm">
       {/* Accordion Header */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 focus:outline-none focus:bg-gray-100 transition-colors duration-150"
+        className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted focus:outline-none focus:bg-muted/50 transition-colors duration-150"
       >
         <div className="flex items-center space-x-3 min-w-0 flex-1">
           <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -425,8 +425,8 @@ Return ONLY the JavaScript expression (no 'return' keyword, no function wrapper)
             </svg>
           </div>
           <div className="text-left min-w-0 flex-1">
-            <h3 className="text-base font-semibold text-gray-900">Natural Language Search</h3>
-            <p className="text-sm text-gray-500 mt-0.5">Search your data using plain English queries</p>
+            <h3 className="text-base font-semibold text-foreground">Natural Language Search</h3>
+            <p className="text-sm text-muted-foreground mt-0.5">Search your data using plain English queries</p>
           </div>
         </div>
         <div className="flex items-center space-x-3 flex-shrink-0 ml-4">

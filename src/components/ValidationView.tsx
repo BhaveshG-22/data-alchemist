@@ -1571,25 +1571,25 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center max-w-md w-full mx-4">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-6"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-6"></div>
 
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">
+          <h2 className="text-xl font-semibold text-foreground mb-4">
             Processing Your Files
           </h2>
 
-          <div className="bg-white rounded-lg p-6 shadow-sm border">
+          <div className="bg-card rounded-lg p-6 shadow-sm border">
             <div className="mb-4">
               <div className="flex justify-between items-center mb-2">
-                <span className="text-sm font-medium text-gray-700">Progress</span>
-                <span className="text-sm text-gray-500">
+                <span className="text-sm font-medium text-foreground">Progress</span>
+                <span className="text-sm text-muted-foreground">
                   {parsingProgress.filesProcessed} of {parsingProgress.totalFiles} files
                 </span>
               </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
+              <div className="w-full bg-muted rounded-full h-2">
                 <div
-                  className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                  className="bg-primary h-2 rounded-full transition-all duration-300"
                   style={{
                     width: `${parsingProgress.totalFiles > 0 ? (parsingProgress.filesProcessed / parsingProgress.totalFiles) * 100 : 0}%`
                   }}
@@ -1600,17 +1600,17 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
             <div className="space-y-2">
               {parsingProgress.currentFile && (
                 <div className="flex items-center space-x-2">
-                  <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse"></div>
-                  <span className="text-sm font-medium text-gray-900 capitalize">
+                  <div className="w-2 h-2 bg-primary rounded-full animate-pulse"></div>
+                  <span className="text-sm font-medium text-foreground capitalize">
                     {parsingProgress.currentFile}
                   </span>
                 </div>
               )}
-              <p className="text-sm text-gray-600">{parsingProgress.step}</p>
+              <p className="text-sm text-muted-foreground">{parsingProgress.step}</p>
             </div>
           </div>
 
-          <div className="mt-4 text-xs text-gray-500">
+          <div className="mt-4 text-xs text-muted-foreground">
           ✨ LLM is analyzing your data for optimal column mapping
           </div>
         </div>
@@ -1621,24 +1621,24 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
   // Show parsing summary screen
   if (parsingComplete && parsingSummary) {
     return (
-      <div className="min-h-screen bg-gray-50 flex flex-col">
+      <div className="min-h-screen bg-background flex flex-col">
         {/* Header */}
-        <div className="bg-white border-b border-gray-200 px-6 py-4">
+        <div className="bg-card border-b border-border px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="w-8 h-8 bg-accent/20 rounded-full flex items-center justify-center">
+                <svg className="w-5 h-5 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
               </div>
               <div>
-                <h1 className="text-xl font-bold text-gray-900">Files Processed Successfully</h1>
-                <p className="text-sm text-gray-600">AI has enhanced your data with intelligent column mapping</p>
+                <h1 className="text-xl font-bold text-foreground">Files Processed Successfully</h1>
+                <p className="text-sm text-muted-foreground">AI has enhanced your data with intelligent column mapping</p>
               </div>
             </div>
             <div className="flex items-center space-x-3">
               {parsingSummary.aiMappingsApplied.length > 0 && (
-                <div className="bg-blue-50 text-blue-700 px-3 py-2 rounded-lg text-sm font-medium">
+                <div className="bg-primary/10 text-primary px-3 py-2 rounded-lg text-sm font-medium">
                   {parsingSummary.aiMappingsApplied.length === 1
                     ? `1 file enhanced`
                     : `${parsingSummary.aiMappingsApplied.length} files enhanced`
@@ -1653,18 +1653,18 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
         <div className="flex-1 p-6">
           <div className="max-w-4xl mx-auto">
             {/* Success Banner */}
-            <div className="bg-gradient-to-r from-green-50 to-blue-50 border border-green-200 rounded-lg p-6 mb-6">
+            <div className="bg-gradient-to-r from-accent/10 to-primary/10 border border-accent/30 rounded-lg p-6 mb-6">
               <div className="flex items-center">
-                <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mr-4">
-                  <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="w-12 h-12 bg-accent/20 rounded-full flex items-center justify-center mr-4">
+                  <svg className="w-6 h-6 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
                 </div>
                 <div className="flex-1">
-                  <h2 className="text-lg font-semibold text-gray-900 mb-1">
+                  <h2 className="text-lg font-semibold text-foreground mb-1">
                     Processing Complete! 🎉
                   </h2>
-                  <p className="text-gray-600">
+                  <p className="text-muted-foreground">
                     Your files have been successfully processed and are ready for validation.
                   </p>
                 </div>
@@ -1673,44 +1673,44 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
 
             {/* Statistics Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-              <div className="bg-white border border-gray-200 rounded-lg p-6">
+              <div className="bg-card border border-border rounded-lg p-6">
                 <div className="flex items-center">
-                  <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
-                    <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="w-10 h-10 bg-primary/20 rounded-lg flex items-center justify-center mr-3">
+                    <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
                   </div>
                   <div>
-                    <div className="text-2xl font-bold text-gray-900">{parsingSummary.totalFiles}</div>
-                    <div className="text-sm text-gray-600">Files Processed</div>
+                    <div className="text-2xl font-bold text-foreground">{parsingSummary.totalFiles}</div>
+                    <div className="text-sm text-muted-foreground">Files Processed</div>
                   </div>
                 </div>
               </div>
 
-              <div className="bg-white border border-gray-200 rounded-lg p-6">
+              <div className="bg-card border border-border rounded-lg p-6">
                 <div className="flex items-center">
-                  <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center mr-3">
-                    <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="w-10 h-10 bg-accent/20 rounded-lg flex items-center justify-center mr-3">
+                    <svg className="w-5 h-5 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                     </svg>
                   </div>
                   <div>
-                    <div className="text-2xl font-bold text-gray-900">{parsingSummary.aiMappingsApplied.length}</div>
-                    <div className="text-sm text-gray-600">Files Enhanced by AI</div>
+                    <div className="text-2xl font-bold text-foreground">{parsingSummary.aiMappingsApplied.length}</div>
+                    <div className="text-sm text-muted-foreground">Files Enhanced by AI</div>
                   </div>
                 </div>
               </div>
 
-              <div className="bg-white border border-gray-200 rounded-lg p-6">
+              <div className="bg-card border border-border rounded-lg p-6">
                 <div className="flex items-center">
-                  <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center mr-3">
-                    <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="w-10 h-10 bg-secondary/50 rounded-lg flex items-center justify-center mr-3">
+                    <svg className="w-5 h-5 text-secondary-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
                     </svg>
                   </div>
                   <div>
-                    <div className="text-2xl font-bold text-gray-900">{parsingSummary.totalMappings}</div>
-                    <div className="text-sm text-gray-600">Column Headers Fixed</div>
+                    <div className="text-2xl font-bold text-foreground">{parsingSummary.totalMappings}</div>
+                    <div className="text-sm text-muted-foreground">Column Headers Fixed</div>
                   </div>
                 </div>
               </div>
@@ -1718,16 +1718,16 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
 
             {/* AI Mapping Details */}
             {parsingSummary.aiMappingsApplied.length > 0 && (
-              <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6">
+              <div className="bg-card border border-border rounded-lg p-6 mb-6">
                 <div className="flex items-center mb-4">
-                  <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
-                    <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="w-8 h-8 bg-primary/20 rounded-lg flex items-center justify-center mr-3">
+                    <svg className="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                     </svg>
                   </div>
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900">AI Column Mapping Results</h3>
-                    <p className="text-sm text-gray-600">
+                    <h3 className="text-lg font-semibold text-foreground">AI Column Mapping Results</h3>
+                    <p className="text-sm text-muted-foreground">
                       AI detected and fixed misnamed column headers in{' '}
                       {parsingSummary.aiMappingsApplied.map(file => `${file.file}.csv`).join(', ')}
                       {parsingSummary.aiMappingsApplied.length > 1 ? ' files' : ' file'}
@@ -1737,19 +1737,19 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
 
                 <div className="space-y-4">
                   {parsingSummary.aiMappingsApplied.map((fileMapping, index) => (
-                    <div key={index} className="border border-gray-100 rounded-lg p-4 bg-gray-50">
+                    <div key={index} className="border border-muted rounded-lg p-4 bg-muted/50">
                       <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center">
-                          <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
-                            <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <div className="w-8 h-8 bg-primary/20 rounded-lg flex items-center justify-center mr-3">
+                            <svg className="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                             </svg>
                           </div>
                           <div>
-                            <h4 className="font-medium text-gray-900 capitalize">
+                            <h4 className="font-medium text-foreground capitalize">
                               {fileMapping.file}.csv
                             </h4>
-                            <p className="text-sm text-gray-600">
+                            <p className="text-sm text-muted-foreground">
                               {(() => {
                                 const actualMappings = fileMapping.mappings.filter(mapping => mapping.from !== mapping.to).length;
                                 return actualMappings === 1
@@ -1761,7 +1761,7 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
                             </p>
                           </div>
                         </div>
-                        <span className="text-xs bg-green-100 text-green-800 px-3 py-1 rounded-full font-medium">
+                        <span className="text-xs bg-accent/20 text-accent px-3 py-1 rounded-full font-medium">
                           {Math.round(fileMapping.confidence * 100)}% confidence
                         </span>
                       </div>
@@ -1770,25 +1770,25 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
                         {fileMapping.mappings
                           .filter(mapping => mapping.from !== mapping.to)
                           .map((mapping, mappingIndex) => (
-                            <div key={mappingIndex} className="flex items-center justify-between bg-white rounded-lg p-3 border border-gray-200">
+                            <div key={mappingIndex} className="flex items-center justify-between bg-card rounded-lg p-3 border border-border">
                               <div className="flex items-center flex-1">
-                                <span className="font-mono bg-red-50 text-red-700 px-3 py-1 rounded border border-red-200 text-sm">
+                                <span className="font-mono bg-destructive/10 text-destructive px-3 py-1 rounded border border-destructive/30 text-sm">
                                   "{mapping.from}"
                                 </span>
-                                <svg className="w-5 h-5 mx-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg className="w-5 h-5 mx-3 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                                 </svg>
-                                <span className="font-mono bg-green-50 text-green-700 px-3 py-1 rounded border border-green-200 text-sm">
+                                <span className="font-mono bg-accent/10 text-accent px-3 py-1 rounded border border-accent/30 text-sm">
                                   "{mapping.to}"
                                 </span>
                               </div>
-                              <span className="text-xs text-blue-600 font-medium ml-3">
+                              <span className="text-xs text-primary font-medium ml-3">
                                 AI Fixed
                               </span>
                             </div>
                           ))}
                         {fileMapping.mappings.filter(mapping => mapping.from !== mapping.to).length === 0 && (
-                          <div className="text-center py-4 text-gray-500 text-sm">
+                          <div className="text-center py-4 text-muted-foreground text-sm">
                             No column headers needed fixing - all were already correct!
                           </div>
                         )}
@@ -1801,15 +1801,15 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
 
             {/* No Mappings Message */}
             {parsingSummary.aiMappingsApplied.length === 0 && (
-              <div className="bg-white border border-green-200 rounded-lg p-6 mb-6">
+              <div className="bg-card border border-accent/30 rounded-lg p-6 mb-6">
                 <div className="text-center">
-                  <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="w-12 h-12 bg-accent/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <svg className="w-6 h-6 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                     </svg>
                   </div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Perfect Headers Detected!</h3>
-                  <p className="text-gray-600">
+                  <h3 className="text-lg font-semibold text-foreground mb-2">Perfect Headers Detected!</h3>
+                  <p className="text-muted-foreground">
                     All your column headers were already correctly formatted. No AI mapping was needed.
                   </p>
                 </div>
@@ -1817,9 +1817,9 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
             )}
 
             {/* Continue Button */}
-            <div className="bg-white border border-gray-200 rounded-lg p-6">
+            <div className="bg-card border border-border rounded-lg p-6">
               <div className="text-center">
-                <p className="text-gray-600 mb-4">
+                <p className="text-muted-foreground mb-4">
                   {parsingSummary.aiMappingsApplied.length > 0
                     ? "These changes have been automatically applied to improve data validation accuracy."
                     : "Your files are ready for validation."
@@ -1827,7 +1827,7 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
                 </p>
                 <button
                   onClick={handleParsingSummaryConfirm}
-                  className="px-8 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors inline-flex items-center"
+                  className="px-8 py-3 bg-primary text-primary-foreground font-medium rounded-lg hover:bg-primary/90 transition-colors inline-flex items-center"
                 >
                   Continue to Validation
                   <svg className="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1843,32 +1843,32 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="min-h-screen bg-background flex flex-col">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-6 py-4">
+      <div className="bg-card border-b border-border px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
             <button
               onClick={onBack}
-              className="flex items-center text-blue-600 hover:text-blue-700 font-medium"
+              className="flex items-center text-primary hover:text-primary/80 font-medium"
             >
               <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
               Back to Upload
             </button>
-            <div className="h-6 w-px bg-gray-300"></div>
+            <div className="h-6 w-px bg-border"></div>
             <div>
-              <h1 className="text-xl font-bold text-gray-900">Data Validation</h1>
-              <p className="text-sm text-gray-600">Review and validate your uploaded data files</p>
+              <h1 className="text-xl font-bold text-foreground">Data Validation</h1>
+              <p className="text-sm text-muted-foreground">Review and validate your uploaded data files</p>
             </div>
           </div>
           <div className="flex items-center space-x-3">
             <button
               onClick={() => setShowPrioritizationDrawer(!showPrioritizationDrawer)}
               className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2 ${showPrioritizationDrawer
-                ? 'bg-blue-600 text-white hover:bg-blue-700'
-                : 'bg-white text-blue-600 border border-blue-600 hover:bg-blue-50'
+                ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                : 'bg-card text-primary border border-primary hover:bg-primary/5'
                 }`}
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1876,7 +1876,7 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
               </svg>
               <span>Prioritization</span>
               {prioritizationConfig.presetUsed && (
-                <span className="bg-white text-blue-600 px-2 py-0.5 rounded-full text-xs font-bold">
+                <span className="bg-card text-primary px-2 py-0.5 rounded-full text-xs font-bold">
                   {prioritizationConfig.presetUsed}
                 </span>
               )}
@@ -1884,8 +1884,8 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
             <button
               onClick={() => setShowRuleDrawer(!showRuleDrawer)}
               className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2 ${showRuleDrawer
-                ? 'bg-purple-600 text-white hover:bg-purple-700'
-                : 'bg-white text-purple-600 border border-purple-600 hover:bg-purple-50'
+                ? 'bg-secondary-foreground text-secondary hover:bg-secondary-foreground/90'
+                : 'bg-card text-secondary-foreground border border-secondary-foreground hover:bg-secondary/20'
                 }`}
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1893,7 +1893,7 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
               </svg>
               <span>Business Rules</span>
               {businessRules.length > 0 && (
-                <span className="bg-white text-purple-600 px-2 py-0.5 rounded-full text-xs font-bold">
+                <span className="bg-card text-secondary-foreground px-2 py-0.5 rounded-full text-xs font-bold">
                   {businessRules.filter(r => r.active).length}
                 </span>
               )}
@@ -1909,8 +1909,8 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
               onClick={onProceed}
               disabled={validationIssues.some(issue => issue.type === 'error')}
               className={`px-6 py-2 rounded-lg font-medium transition-colors ${validationIssues.some(issue => issue.type === 'error')
-                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                : 'bg-blue-600 text-white hover:bg-blue-700'
+                ? 'bg-muted text-muted-foreground cursor-not-allowed'
+                : 'bg-primary text-primary-foreground hover:bg-primary/90'
                 }`}
             >
               Proceed to Analysis
@@ -1990,23 +1990,23 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
         className="!h-[85vh]"
         style={{ height: '85vh' }}
       >
-        <div className="flex flex-col h-full bg-white">
+        <div className="flex flex-col h-full bg-card">
           {/* Drawer Header */}
-          <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-purple-50">
+          <div className="flex items-center justify-between p-4 border-b border-border bg-secondary/20">
             <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
-                <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="w-8 h-8 bg-secondary/50 rounded-lg flex items-center justify-center">
+                <svg className="w-4 h-4 text-secondary-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
               </div>
               <div>
-                <h2 className="text-lg font-semibold text-gray-900">Business Rules</h2>
-                <p className="text-sm text-gray-600">Configure validation rules</p>
+                <h2 className="text-lg font-semibold text-foreground">Business Rules</h2>
+                <p className="text-sm text-muted-foreground">Configure validation rules</p>
               </div>
             </div>
             <button
               onClick={() => setShowRuleDrawer(false)}
-              className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -2036,23 +2036,23 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
         className="!h-[85vh]"
         style={{ height: '85vh' }}
       >
-        <div className="flex flex-col h-full bg-white">
+        <div className="flex flex-col h-full bg-card">
           {/* Drawer Header */}
-          <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-blue-50">
+          <div className="flex items-center justify-between p-4 border-b border-border bg-primary/10">
             <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="w-8 h-8 bg-primary/20 rounded-lg flex items-center justify-center">
+                <svg className="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h13M3 8h9m-9 4h9m5-4v12m0 0l-4-4m4 4l4-4" />
                 </svg>
               </div>
               <div>
-                <h2 className="text-lg font-semibold text-gray-900">Prioritization & Weights</h2>
-                <p className="text-sm text-gray-600">Configure resource allocation priorities</p>
+                <h2 className="text-lg font-semibold text-foreground">Prioritization & Weights</h2>
+                <p className="text-sm text-muted-foreground">Configure resource allocation priorities</p>
               </div>
             </div>
             <button
               onClick={() => setShowPrioritizationDrawer(false)}
-              className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -2072,15 +2072,15 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
 
       {/* AI Column Mapping Dialog */}
       {showColumnMappingDialog && columnMappingSuggestions && currentMappingFile && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-card rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">
+              <h3 className="text-lg font-semibold text-foreground">
                 🤖 AI Column Mapping Suggestions
               </h3>
               <button
                 onClick={handleRejectMappings}
-                className="text-gray-400 hover:text-gray-600"
+                className="text-muted-foreground hover:text-foreground"
               >
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -2089,19 +2089,19 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
             </div>
 
             <div className="mb-4">
-              <p className="text-sm text-gray-600 mb-3">
+              <p className="text-sm text-muted-foreground mb-3">
                 AI detected potentially misnamed columns in your <strong>{currentMappingFile}</strong> file.
                 Here are intelligent mapping suggestions:
               </p>
 
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
-                <div className="flex items-center text-sm text-blue-800">
+              <div className="bg-primary/10 border border-primary/30 rounded-lg p-3 mb-4">
+                <div className="flex items-center text-sm text-primary">
                   <div className="flex-shrink-0 w-16 text-right font-medium">Confidence:</div>
                   <div className="ml-2">
                     <div className="flex items-center">
-                      <div className="w-24 bg-blue-200 rounded-full h-2 mr-2">
+                      <div className="w-24 bg-primary/30 rounded-full h-2 mr-2">
                         <div
-                          className="bg-blue-600 h-2 rounded-full"
+                          className="bg-primary h-2 rounded-full"
                           style={{ width: `${Math.round(columnMappingSuggestions.confidence * 100)}%` }}
                         ></div>
                       </div>
@@ -2113,22 +2113,22 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
             </div>
 
             <div className="space-y-3 mb-6">
-              <h4 className="font-medium text-gray-900">Suggested Mappings:</h4>
+              <h4 className="font-medium text-foreground">Suggested Mappings:</h4>
               {columnMappingSuggestions.mappings?.map((mapping, index: number) => (
-                <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div key={index} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                   <div className="flex items-center space-x-3">
                     <div className="text-sm">
-                      <span className="font-mono bg-red-100 text-red-800 px-2 py-1 rounded text-xs">
+                      <span className="font-mono bg-destructive/10 text-destructive px-2 py-1 rounded text-xs">
                         {mapping.originalHeader}
                       </span>
-                      <span className="mx-2 text-gray-400">→</span>
-                      <span className="font-mono bg-green-100 text-green-800 px-2 py-1 rounded text-xs">
+                      <span className="mx-2 text-muted-foreground">→</span>
+                      <span className="font-mono bg-accent/10 text-accent px-2 py-1 rounded text-xs">
                         {mapping.suggestedHeader}
                       </span>
                     </div>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <span className="text-xs text-gray-500">
+                    <span className="text-xs text-muted-foreground">
                       {Math.round(mapping.confidence * 100)}%
                     </span>
                   </div>
@@ -2137,10 +2137,10 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
 
               {columnMappingSuggestions.unmappedColumns?.length > 0 && (
                 <div className="mt-4">
-                  <h5 className="text-sm font-medium text-gray-700 mb-2">Unmapped Columns:</h5>
+                  <h5 className="text-sm font-medium text-foreground mb-2">Unmapped Columns:</h5>
                   <div className="flex flex-wrap gap-2">
                     {columnMappingSuggestions.unmappedColumns.map((col: string, index: number) => (
-                      <span key={index} className="font-mono bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-xs">
+                      <span key={index} className="font-mono bg-secondary/30 text-secondary-foreground px-2 py-1 rounded text-xs">
                         {col}
                       </span>
                     ))}
@@ -2150,10 +2150,10 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
 
               {columnMappingSuggestions.missingColumns?.length > 0 && (
                 <div className="mt-4">
-                  <h5 className="text-sm font-medium text-gray-700 mb-2">Still Missing:</h5>
+                  <h5 className="text-sm font-medium text-foreground mb-2">Still Missing:</h5>
                   <div className="flex flex-wrap gap-2">
                     {columnMappingSuggestions.missingColumns.map((col: string, index: number) => (
-                      <span key={index} className="font-mono bg-red-100 text-red-800 px-2 py-1 rounded text-xs">
+                      <span key={index} className="font-mono bg-destructive/10 text-destructive px-2 py-1 rounded text-xs">
                         {col}
                       </span>
                     ))}
@@ -2165,13 +2165,13 @@ export default function ValidationView({ uploadedFiles, onBack, onProceed }: Val
             <div className="flex justify-end space-x-3">
               <button
                 onClick={handleRejectMappings}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+                className="px-4 py-2 text-sm font-medium text-foreground bg-card border border-border rounded-lg hover:bg-muted/50"
               >
                 Keep Original Headers
               </button>
               <button
                 onClick={handleAcceptMappings}
-                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700"
+                className="px-4 py-2 text-sm font-medium text-primary-foreground bg-primary rounded-lg hover:bg-primary/90"
               >
                 Apply AI Suggestions
               </button>

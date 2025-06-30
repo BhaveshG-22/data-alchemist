@@ -97,48 +97,48 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-background py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-6xl mx-auto">
-        <div className="text-center mb-12">
-          <h1 className="text-3xl font-bold text-gray-900 mb-4">
+        <div className="text-center mb-16">
+          <h1 className="text-4xl font-bold text-foreground mb-3">
             Data Alchemist
           </h1>
-          <p className="text-lg text-gray-600 mb-6">
-            Upload your CSV or XLSX files to transform your data
+          <p className="text-muted-foreground mb-8">
+            Upload CSV or XLSX files to validate and transform your data
           </p>
           
-          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+          <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
             <button
               onClick={handleUseSampleData}
               disabled={isLoadingSampleData}
-              className={`px-6 py-3 rounded-lg font-medium transition-colors ${
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                 isLoadingSampleData
-                  ? 'bg-gray-400 text-white cursor-not-allowed'
+                  ? 'bg-muted text-muted-foreground cursor-not-allowed'
                   : sampleDataLoaded
-                  ? 'bg-green-500 text-white'
-                  : 'bg-green-600 text-white hover:bg-green-700'
+                  ? 'bg-card border border-border text-foreground'
+                  : 'bg-card border border-border text-foreground hover:bg-muted'
               }`}
             >
               {isLoadingSampleData ? (
-                <>⏳ Loading...</>
+                <>Loading...</>
               ) : sampleDataLoaded ? (
-                <>✅ Sample Data Loaded</>
+                <>✓ Sample Data Ready</>
               ) : (
-                <>🧪 Use Sample Data</>
+                <>Use Sample Data</>
               )}
             </button>
-            <span className="text-gray-400">or</span>
-            <span className="text-gray-600 font-medium">Upload Your Own Files</span>
+            <span className="text-muted-foreground text-sm">or</span>
+            <span className="text-muted-foreground text-sm">upload your own files below</span>
           </div>
           
           {sampleDataLoaded && (
-            <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
-              <h4 className="text-green-900 font-semibold mb-2 text-center">✅ Sample Data Loaded - Comprehensive Test Suite</h4>
-              <div className="text-green-800 text-sm space-y-2">
+            <div className="mt-4 p-4 bg-card border border-border rounded-lg">
+              <h4 className="text-foreground font-semibold mb-2 text-center">✅ Sample Data Loaded - Comprehensive Test Suite</h4>
+              <div className="text-foreground text-sm space-y-2">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <p className="font-medium mb-1">📊 Data Volume:</p>
-                    <ul className="text-xs space-y-0.5 ml-2">
+                    <p className="font-medium mb-1 text-foreground">📊 Data Volume:</p>
+                    <ul className="text-xs space-y-0.5 ml-2 text-muted-foreground">
                       <li>• 90 Tasks with diverse categories</li>
                       <li>• 50 Workers with skill variations</li>
                       <li>• 30 Clients with complex requirements</li>
@@ -146,8 +146,8 @@ export default function Home() {
                     </ul>
                   </div>
                   <div>
-                    <p className="font-medium mb-1">🧪 Edge Cases Covered:</p>
-                    <ul className="text-xs space-y-0.5 ml-2">
+                    <p className="font-medium mb-1 text-foreground">🧪 Edge Cases Covered:</p>
+                    <ul className="text-xs space-y-0.5 ml-2 text-muted-foreground">
                       <li>• Duplicate IDs & missing references</li>
                       <li>• Invalid ranges & boundary values</li>
                       <li>• Malformed data & special characters</li>
@@ -155,9 +155,9 @@ export default function Home() {
                     </ul>
                   </div>
                 </div>
-                <div className="mt-3 pt-2 border-t border-green-300">
-                  <p className="font-medium mb-1">🔍 Validation Scenarios:</p>
-                  <div className="text-xs grid grid-cols-2 md:grid-cols-4 gap-2">
+                <div className="mt-3 pt-2 border-t border-border">
+                  <p className="font-medium mb-1 text-foreground">🔍 Validation Scenarios:</p>
+                  <div className="text-xs grid grid-cols-2 md:grid-cols-4 gap-2 text-muted-foreground">
                     <span>• Skill coverage gaps</span>
                     <span>• Worker overload detection</span>
                     <span>• Business rule conflicts</span>
@@ -169,52 +169,52 @@ export default function Home() {
           )}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-16">
           <FileUpload
             title="Clients"
-            description="Upload client information and contact details"
+            description="Client information and contacts"
             onFileSelect={handleFileSelect('clients')}
           />
           
           <FileUpload
             title="Workers"
-            description="Upload worker profiles and assignments"
+            description="Worker profiles and skills"
             onFileSelect={handleFileSelect('workers')}
           />
           
           <FileUpload
             title="Tasks"
-            description="Upload task definitions and requirements"
+            description="Task definitions and requirements"
             onFileSelect={handleFileSelect('tasks')}
           />
         </div>
 
-        <div className="text-center mb-12">
+        <div className="text-center mb-16">
           <button
             onClick={allFilesUploaded ? handleNext : undefined}
             disabled={!allFilesUploaded}
-            className={`px-8 py-3 rounded-lg font-medium transition-colors ${
+            className={`px-6 py-2 rounded-lg text-sm font-medium transition-colors ${
               allFilesUploaded
-                ? 'bg-blue-600 text-white hover:bg-blue-700 cursor-pointer'
-                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                ? 'bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer'
+                : 'bg-muted text-muted-foreground cursor-not-allowed'
             }`}
           >
-            Next: Validate Data
+            Validate Data
           </button>
         </div>
 
-        <div className="bg-white rounded-lg border border-gray-200 p-8 shadow-sm">
-          <h2 className="text-xl font-semibold text-gray-900 mb-6">
+        <div className="bg-card rounded-lg border border-border p-8">
+          <h2 className="text-xl font-semibold text-card-foreground mb-6">
             File Format Requirements
           </h2>
           
           {sampleDataLoaded && (
-            <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-              <h3 className="text-blue-900 font-medium mb-3">🧪 Sample Data - Edge Case Test Coverage</h3>
-              <div className="text-blue-800 text-sm grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="mb-6 p-4 bg-secondary border border-border rounded-lg">
+              <h3 className="text-foreground font-medium mb-3">🧪 Sample Data - Edge Case Test Coverage</h3>
+              <div className="text-foreground text-sm grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <p className="font-medium mb-2">Data Quality Issues:</p>
-                  <ul className="space-y-1 text-xs">
+                  <p className="font-medium mb-2 text-foreground">Data Quality Issues:</p>
+                  <ul className="space-y-1 text-xs text-muted-foreground">
                     <li>• Empty fields & null values</li>
                     <li>• Unicode & special characters</li>
                     <li>• Malformed CSV structures</li>
@@ -223,8 +223,8 @@ export default function Home() {
                   </ul>
                 </div>
                 <div>
-                  <p className="font-medium mb-2">Business Logic Conflicts:</p>
-                  <ul className="space-y-1 text-xs">
+                  <p className="font-medium mb-2 text-foreground">Business Logic Conflicts:</p>
+                  <ul className="space-y-1 text-xs text-muted-foreground">
                     <li>• Circular co-run dependencies</li>
                     <li>• Phase window contradictions</li>
                     <li>• Impossible load constraints</li>
@@ -238,8 +238,8 @@ export default function Home() {
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div>
-              <h3 className="text-lg font-medium text-gray-900 mb-3">Clients File</h3>
-              <ul className="text-sm text-gray-600 space-y-1">
+              <h3 className="text-lg font-medium text-card-foreground mb-3">Clients File</h3>
+              <ul className="text-sm text-muted-foreground space-y-1">
                 <li>• Name, Email, Phone</li>
                 <li>• Company, Address</li>
                 <li>• Contact Person</li>
@@ -247,8 +247,8 @@ export default function Home() {
             </div>
             
             <div>
-              <h3 className="text-lg font-medium text-gray-900 mb-3">Workers File</h3>
-              <ul className="text-sm text-gray-600 space-y-1">
+              <h3 className="text-lg font-medium text-card-foreground mb-3">Workers File</h3>
+              <ul className="text-sm text-muted-foreground space-y-1">
                 <li>• Name, Email, Skills</li>
                 <li>• Department, Role</li>
                 <li>• Availability Status</li>
@@ -256,8 +256,8 @@ export default function Home() {
             </div>
             
             <div>
-              <h3 className="text-lg font-medium text-gray-900 mb-3">Tasks File</h3>
-              <ul className="text-sm text-gray-600 space-y-1">
+              <h3 className="text-lg font-medium text-card-foreground mb-3">Tasks File</h3>
+              <ul className="text-sm text-muted-foreground space-y-1">
                 <li>• Task Name, Description</li>
                 <li>• Priority, Due Date</li>
                 <li>• Assigned Worker</li>

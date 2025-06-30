@@ -297,11 +297,11 @@ export default function IssuesSidebar({ issues, parsedData, activeTab, onIssueCl
   const currentData = parsedData[activeTab];
 
   return (
-    <div className="w-80 bg-white border-l border-gray-200 flex flex-col sticky top-0 h-[calc(100vh-88px)] shadow-lg z-10">
+    <div className="w-80 bg-background border-l border-border flex flex-col sticky top-0 h-[calc(100vh-88px)] shadow-lg z-10">
       {/* Header - Fixed */}
-      <div className="flex-shrink-0 p-4 border-b border-gray-200 bg-gray-50">
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">Validation Issues</h3>
-        <div className="text-sm text-gray-600 capitalize mb-3">
+      <div className="flex-shrink-0 p-4 border-b border-border bg-secondary">
+        <h3 className="text-lg font-semibold text-foreground mb-2">Validation Issues</h3>
+        <div className="text-sm text-muted-foreground capitalize mb-3">
           {activeTab} Sheet
         </div>
         

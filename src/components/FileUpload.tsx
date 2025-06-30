@@ -57,15 +57,15 @@ export default function FileUpload({ title, description, onFileSelect }: FileUpl
   };
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
-      <h3 className="text-lg font-semibold text-gray-900 mb-2">{title}</h3>
-      <p className="text-sm text-gray-600 mb-4">{description}</p>
+    <div className="bg-card rounded-lg border border-border p-6 shadow-sm">
+      <h3 className="text-lg font-semibold text-card-foreground mb-2">{title}</h3>
+      <p className="text-sm text-muted-foreground mb-4">{description}</p>
       
       <div
         className={`relative border-2 border-dashed rounded-lg p-8 text-center transition-colors cursor-pointer ${
           isDragOver
-            ? 'border-blue-400 bg-blue-50'
-            : 'border-gray-300 hover:border-gray-400'
+            ? 'border-accent bg-accent/10'
+            : 'border-border hover:border-accent/50'
         }`}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
@@ -74,7 +74,7 @@ export default function FileUpload({ title, description, onFileSelect }: FileUpl
       >
         <div className="flex flex-col items-center">
           <svg
-            className="w-12 h-12 text-gray-400 mb-4"
+            className="w-12 h-12 text-muted-foreground mb-4"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -89,19 +89,19 @@ export default function FileUpload({ title, description, onFileSelect }: FileUpl
           
           {selectedFile ? (
             <div className="text-center">
-              <p className="text-sm font-medium text-green-600 mb-2">
+              <p className="text-sm font-medium text-accent mb-2">
                 File selected: {selectedFile.name}
               </p>
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-muted-foreground">
                 {(selectedFile.size / 1024).toFixed(1)} KB
               </p>
             </div>
           ) : (
             <>
-              <p className="text-sm text-gray-600 mb-1">
-                <span className="text-blue-600 font-medium">Click to upload</span> or drag and drop
+              <p className="text-sm text-foreground mb-1">
+                <span className="text-primary font-medium">Click to upload</span> or drag and drop
               </p>
-              <p className="text-xs text-gray-500">CSV or XLSX files only</p>
+              <p className="text-xs text-muted-foreground">CSV or XLSX files only</p>
             </>
           )}
         </div>

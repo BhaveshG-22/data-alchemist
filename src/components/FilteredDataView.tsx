@@ -31,9 +31,9 @@ export default function FilteredDataView({
     : 0;
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg shadow-sm">
+    <div className="bg-background border border-border rounded-lg shadow-sm">
       {/* Results Header */}
-      <div className="px-6 py-4 border-b border-gray-200 bg-blue-50">
+      <div className="px-6 py-4 border-b border-border bg-secondary">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
@@ -42,8 +42,8 @@ export default function FilteredDataView({
               </svg>
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-gray-900">Query Results</h3>
-              <p className="text-sm text-gray-600">
+              <h3 className="text-lg font-semibold text-foreground">Query Results</h3>
+              <p className="text-sm text-muted-foreground">
                 "{queryResult.query}"
               </p>
             </div>

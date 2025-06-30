@@ -447,7 +447,7 @@ export default function EditableDataTable({ data, onDataChange, title, highlight
   if (!data || !data.headers || !Array.isArray(data.headers) || data.headers.length === 0) {
     console.error('Invalid data passed to EditableDataTable:', data);
     return (
-      <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-8">
+      <div className="bg-background rounded-lg border border-border shadow-sm p-8">
         <div className="text-center">
           <div className="text-red-500 mb-4">
             <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -467,7 +467,7 @@ export default function EditableDataTable({ data, onDataChange, title, highlight
   if (!data.rows || !Array.isArray(data.rows)) {
     console.error('Invalid rows data:', data.rows);
     return (
-      <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-8">
+      <div className="bg-background rounded-lg border border-border shadow-sm p-8">
         <div className="text-center">
           <div className="text-yellow-500 mb-4">
             <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -491,12 +491,12 @@ export default function EditableDataTable({ data, onDataChange, title, highlight
   });
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
+    <div className="bg-background rounded-lg border border-border shadow-sm">
       {showHeader && (
-        <div className="px-6 py-4 border-b border-gray-200">
+        <div className="px-6 py-4 border-b border-border">
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
-            <div className="text-sm text-gray-500">
+            <h3 className="text-lg font-semibold text-foreground">{title}</h3>
+            <div className="text-sm text-muted-foreground">
               {tableData.length} rows × {data.headers.length} columns
             </div>
           </div>

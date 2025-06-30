@@ -234,8 +234,8 @@ export default function NLRuleInput({
   };
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg shadow-sm">
-      <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
+    <div className="bg-background border border-border rounded-lg shadow-sm">
+      <div className="px-4 py-3 border-b border-border bg-secondary">
         <div className="flex items-center space-x-3">
           <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
             <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -243,8 +243,8 @@ export default function NLRuleInput({
             </svg>
           </div>
           <div>
-            <h3 className="text-base font-semibold text-gray-900">Natural Language to Rules Converter</h3>
-            <p className="text-sm text-gray-600 mt-0.5">Convert plain English instructions into structured business rules</p>
+            <h3 className="text-base font-semibold text-foreground">Natural Language to Rules Converter</h3>
+            <p className="text-sm text-muted-foreground mt-0.5">Convert plain English instructions into structured business rules</p>
             <p className="text-xs text-blue-600 mt-1 font-medium">✨ AI-powered with examples customized for your dataset</p>
           </div>
         </div>

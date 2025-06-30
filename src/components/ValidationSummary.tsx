@@ -45,16 +45,16 @@ export default function ValidationSummary({ issues, onIssueClick }: ValidationSu
 
   if (issues.length === 0) {
     return (
-      <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+      <div className="bg-primary/10 border border-primary/30 rounded-lg p-4 mb-6">
         <div className="flex items-center">
           <div className="flex-shrink-0">
             <span className="text-2xl">✅</span>
           </div>
           <div className="ml-3">
-            <h3 className="text-sm font-medium text-green-800">
+            <h3 className="text-sm font-medium text-primary-foreground">
               Validation Passed
             </h3>
-            <div className="text-sm text-green-700">
+            <div className="text-sm text-primary-foreground">
               No validation issues found. Your data meets all requirements.
             </div>
           </div>
@@ -64,10 +64,10 @@ export default function ValidationSummary({ issues, onIssueClick }: ValidationSu
   }
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg shadow-sm mb-6">
-      <div className="px-4 py-3 border-b border-gray-200">
-        <h3 className="text-lg font-medium text-gray-900">Validation Summary</h3>
-        <div className="mt-1 text-sm text-gray-600">
+    <div className="bg-background border border-border rounded-lg shadow-sm mb-6">
+      <div className="px-4 py-3 border-b border-border">
+        <h3 className="text-lg font-medium text-foreground">Validation Summary</h3>
+        <div className="mt-1 text-sm text-muted-foreground">
           Found {issues.length} issue{issues.length !== 1 ? 's' : ''} across your data
         </div>
       </div>
