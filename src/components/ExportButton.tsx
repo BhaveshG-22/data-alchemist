@@ -46,13 +46,16 @@ export default function ExportButton({
   const validateDataForExport = (): { valid: boolean; message?: string } => {
     const { clients, workers, tasks } = parsedData;
     
-    // Check for validation errors first
-    const hasErrors = validationIssues.some(issue => issue.type === 'error');
-    if (hasErrors) {
-      const errorCount = validationIssues.filter(issue => issue.type === 'error').length;
+    // Only block exports for fixable validation errors (not strategic planning issues)
+    const strategicCategories = ['overloaded_workers', 'phase_saturation', 'skill_coverage'];
+    const fixableErrors = validationIssues.filter(issue => 
+      issue.type === 'error' && !strategicCategories.includes(issue.category)
+    );
+    
+    if (fixableErrors.length > 0) {
       return { 
         valid: false, 
-        message: `Cannot export data with ${errorCount} validation error${errorCount !== 1 ? 's' : ''}. Please fix all errors first.` 
+        message: `Cannot export data with ${fixableErrors.length} fixable validation error${fixableErrors.length !== 1 ? 's' : ''}. Please resolve "Ask AI" issues first.` 
       };
     }
     
@@ -129,14 +132,20 @@ export default function ExportButton({
     return summary.length > 0 ? summary.join(', ') : 'No data';
   };
 
-  const hasValidationErrors = validationIssues.some(issue => issue.type === 'error');
-  const isDisabled = disabled || isExporting || hasValidationErrors || (!parsedData.clients && !parsedData.workers && !parsedData.tasks);
+  // Only consider fixable validation errors for disabling export
+  const strategicCategories = ['overloaded_workers', 'phase_saturation', 'skill_coverage'];
+  const hasFixableErrors = validationIssues.some(issue => 
+    issue.type === 'error' && !strategicCategories.includes(issue.category)
+  );
+  const isDisabled = disabled || isExporting || hasFixableErrors || (!parsedData.clients && !parsedData.workers && !parsedData.tasks);
   
   const getDisabledReason = (): string => {
     if (isExporting) return 'Export in progress...';
-    if (hasValidationErrors) {
-      const errorCount = validationIssues.filter(issue => issue.type === 'error').length;
-      return `Fix ${errorCount} validation error${errorCount !== 1 ? 's' : ''} before exporting`;
+    if (hasFixableErrors) {
+      const fixableErrorCount = validationIssues.filter(issue => 
+        issue.type === 'error' && !strategicCategories.includes(issue.category)
+      ).length;
+      return `Fix ${fixableErrorCount} fixable validation error${fixableErrorCount !== 1 ? 's' : ''} before exporting`;
     }
     if (!parsedData.clients && !parsedData.workers && !parsedData.tasks) {
       return 'No data available to export';
