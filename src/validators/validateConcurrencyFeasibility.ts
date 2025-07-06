@@ -108,17 +108,44 @@ export function validateConcurrencyFeasibility(context: ValidatorContext): Valid
         });
 
         if (skillsArray.length > 0 && availableWorkers.length === 0) {
+          // Get available skills from workers to suggest better alternatives
+          const allWorkerSkills = new Set<string>();
+          data.workers.rows.forEach(worker => {
+            const workerSkills = getColumnValue(worker, 'Skills');
+            if (workerSkills && typeof workerSkills === 'string') {
+              workerSkills.split(',').forEach(skill => {
+                const trimmed = skill.trim().toLowerCase();
+                if (trimmed) allWorkerSkills.add(trimmed);
+              });
+            }
+          });
+
+          // Check if skills look like IDs/numbers that should be replaced
+          const hasNumericSkills = skillsArray.some(skill => /^\d+$/.test(skill));
+          const availableSkillsList = Array.from(allWorkerSkills).slice(0, 8).join(', ');
+          
+          let suggestion = 'Add workers with the required skills to the workers sheet';
+          let message = `Task '${taskName || taskId}' at row ${i + 1} requires skills [${skillsArray.join(', ')}] but no workers have these skills`;
+          
+          if (hasNumericSkills && allWorkerSkills.size > 0) {
+            suggestion = `Replace numeric skill IDs (${skillsArray.filter(s => /^\d+$/.test(s)).join(', ')}) with actual skill names like: ${availableSkillsList}`;
+            message += `. Detected numeric skill IDs that should be replaced with actual skill names`;
+          } else if (allWorkerSkills.size > 0) {
+            suggestion = `Update RequiredSkills to match available skills: ${availableSkillsList}, or add workers with skills: ${skillsArray.join(', ')}`;
+            message += `. Available worker skills: ${availableSkillsList}`;
+          }
+
           issues.push(
             createValidationIssue(
-              'concurrency_feasibility',
-              `Task '${taskName || taskId}' at row ${i + 1} requires skills [${skillsArray.join(', ')}] but no workers have these skills`,
+              'skill_coverage',
+              message,
               {
                 sheet: 'tasks',
                 row: i,
                 column: 'RequiredSkills',
                 value: requiredSkills,
                 type: 'error',
-                suggestion: 'Ensure workers with required skills are available or adjust skill requirements',
+                suggestion,
                 fixable: false,
               }
             )
