@@ -98,7 +98,7 @@ export function validatePhaseSaturation(context: ValidatorContext): ValidationIs
           });
           
           let hasAllSkills = true;
-          for (const skill of requiredSkills) {
+          for (const skill of Array.from(requiredSkills)) {
             if (!workerSkills.has(skill)) {
               hasAllSkills = false;
               break;
@@ -125,11 +125,22 @@ export function validatePhaseSaturation(context: ValidatorContext): ValidationIs
   });
 
   // Check for phase saturation
-  for (const [phase, demand] of phaseDemand.entries()) {
+  for (const [phase, demand] of Array.from(phaseDemand.entries())) {
     const capacity = phaseCapacity.get(phase) || 0;
     
     if (demand.totalDuration > capacity) {
       const saturationPercentage = capacity > 0 ? Math.round((demand.totalDuration / capacity) * 100) : 0;
+      const overloadAmount = demand.totalDuration - capacity;
+      
+      // Find the best redistribution solution
+      const redistributionPlan = findOptimalRedistribution(
+        phase, 
+        demand, 
+        overloadAmount, 
+        phaseDemand, 
+        phaseCapacity, 
+        data
+      );
       
       issues.push(
         createValidationIssue(
@@ -141,8 +152,9 @@ export function validatePhaseSaturation(context: ValidatorContext): ValidationIs
             column: 'PreferredPhases',
             value: phase,
             type: 'error',
-            suggestion: `Redistribute ${demand.taskCount} tasks (${demand.tasks.slice(0, 3).join(', ')}${demand.tasks.length > 3 ? '...' : ''}) to other phases or increase worker capacity`,
-            fixable: false,
+            suggestion: redistributionPlan.suggestion,
+            fixable: redistributionPlan.fixable,
+            autoFix: redistributionPlan.autoFix,
           }
         )
       );
@@ -169,7 +181,7 @@ export function validatePhaseSaturation(context: ValidatorContext): ValidationIs
   }
 
   // Check for phases with zero capacity but task demand
-  for (const [phase, demand] of phaseDemand.entries()) {
+  for (const [phase, demand] of Array.from(phaseDemand.entries())) {
     const capacity = phaseCapacity.get(phase) || 0;
     
     if (capacity === 0 && demand.totalDuration > 0) {
@@ -192,7 +204,7 @@ export function validatePhaseSaturation(context: ValidatorContext): ValidationIs
   }
 
   // Check for unused phases with high capacity
-  for (const [phase, capacity] of phaseCapacity.entries()) {
+  for (const [phase, capacity] of Array.from(phaseCapacity.entries())) {
     const demand = phaseDemand.get(phase);
     
     if (!demand && capacity > 0) {
@@ -215,4 +227,145 @@ export function validatePhaseSaturation(context: ValidatorContext): ValidationIs
   }
 
   return issues;
+}
+
+interface RedistributionPlan {
+  suggestion: string;
+  fixable: boolean;
+  autoFix?: {
+    action: 'redistributeTasks';
+    tasks: { taskId: string; fromPhase: number; toPhase: number; duration: number; reasoning: string }[];
+  };
+}
+
+function findOptimalRedistribution(
+  overloadedPhase: number,
+  demand: { totalDuration: number; taskCount: number; tasks: string[] },
+  overloadAmount: number,
+  allPhaseDemand: Map<number, { totalDuration: number; taskCount: number; tasks: string[] }>,
+  allPhaseCapacity: Map<number, number>,
+  data: any
+): RedistributionPlan {
+  // Find tasks from the overloaded phase with their durations
+  const tasksInPhase: Array<{ taskId: string; duration: number; skills: string[] }> = [];
+  
+  data.tasks.rows.forEach((task: any, index: number) => {
+    const taskId = getColumnValue(task, 'TaskID');
+    const preferredPhasesRaw = getColumnValue(task, 'PreferredPhases');
+    const durationRaw = getColumnValue(task, 'Duration');
+    const requiredSkillsRaw = getColumnValue(task, 'RequiredSkills');
+    
+    if (!taskId || typeof taskId !== 'string') return;
+    
+    // Parse preferred phases
+    const preferredPhases: number[] = [];
+    if (preferredPhasesRaw) {
+      const phasesStr = String(preferredPhasesRaw);
+      if (phasesStr.includes(',')) {
+        phasesStr.split(',').forEach(phase => {
+          const phaseNum = parseInt(phase.trim(), 10);
+          if (!isNaN(phaseNum) && phaseNum > 0) {
+            preferredPhases.push(phaseNum);
+          }
+        });
+      } else {
+        const phaseNum = parseInt(phasesStr, 10);
+        if (!isNaN(phaseNum) && phaseNum > 0) {
+          preferredPhases.push(phaseNum);
+        }
+      }
+    }
+    
+    // If this task is assigned to the overloaded phase
+    if (preferredPhases.includes(overloadedPhase) || 
+        (preferredPhases.length === 0 && overloadedPhase === 1)) {
+      
+      const duration = typeof durationRaw === 'number' ? durationRaw :
+                      typeof durationRaw === 'string' ? parseFloat(durationRaw) : 1;
+      
+      const skills: string[] = [];
+      if (requiredSkillsRaw && typeof requiredSkillsRaw === 'string') {
+        requiredSkillsRaw.split(',').forEach(skill => {
+          const trimmed = skill.trim().toLowerCase();
+          if (trimmed) skills.push(trimmed);
+        });
+      }
+      
+      tasksInPhase.push({ taskId, duration, skills });
+    }
+  });
+  
+  // Find target phases with available capacity
+  const targetPhases: Array<{ phase: number; availableCapacity: number }> = [];
+  for (const [phase, capacity] of Array.from(allPhaseCapacity.entries())) {
+    if (phase !== overloadedPhase) {
+      const currentDemand = allPhaseDemand.get(phase)?.totalDuration || 0;
+      const availableCapacity = capacity - currentDemand;
+      if (availableCapacity > 0) {
+        targetPhases.push({ phase, availableCapacity });
+      }
+    }
+  }
+  
+  // Sort target phases by available capacity (most capacity first)
+  targetPhases.sort((a, b) => b.availableCapacity - a.availableCapacity);
+  
+  // Sort tasks by duration (smallest first, easier to fit)
+  tasksInPhase.sort((a, b) => a.duration - b.duration);
+  
+  // Create redistribution plan
+  const redistributions: Array<{ taskId: string; fromPhase: number; toPhase: number; duration: number; reasoning: string }> = [];
+  let remainingOverload = overloadAmount;
+  
+  for (const task of tasksInPhase) {
+    if (remainingOverload <= 0) break;
+    
+    // Find a suitable target phase for this task
+    for (const target of targetPhases) {
+      if (target.availableCapacity >= task.duration) {
+        redistributions.push({
+          taskId: task.taskId,
+          fromPhase: overloadedPhase,
+          toPhase: target.phase,
+          duration: task.duration,
+          reasoning: `Phase ${target.phase} has ${target.availableCapacity} units available capacity`
+        });
+        
+        target.availableCapacity -= task.duration;
+        remainingOverload -= task.duration;
+        break;
+      }
+    }
+  }
+  
+  // Generate suggestion and auto-fix
+  if (redistributions.length > 0) {
+    const taskList = redistributions.slice(0, 3).map(r => r.taskId).join(', ');
+    const moreText = redistributions.length > 3 ? ` and ${redistributions.length - 3} more` : '';
+    const targetPhaseList = Array.from(new Set(redistributions.map(r => r.toPhase))).join(', ');
+    
+    return {
+      suggestion: `Move tasks ${taskList}${moreText} from Phase ${overloadedPhase} to Phase(s) ${targetPhaseList} (saves ${Math.round(redistributions.reduce((sum, r) => sum + r.duration, 0))} duration units)`,
+      fixable: true,
+      autoFix: {
+        action: 'redistributeTasks',
+        tasks: redistributions
+      }
+    };
+  } else {
+    // No suitable redistribution found
+    const totalAvailableCapacity = targetPhases.reduce((sum, t) => sum + t.availableCapacity, 0);
+    
+    if (totalAvailableCapacity === 0) {
+      return {
+        suggestion: `No other phases have available capacity. Consider adding more workers or reducing task durations in Phase ${overloadedPhase}`,
+        fixable: false
+      };
+    } else {
+      return {
+        suggestion: `Available capacity in other phases (${Math.round(totalAvailableCapacity)} units) is insufficient for large tasks. Consider splitting tasks or adding workers`,
+        fixable: false
+      };
+    }
+  }
 }
