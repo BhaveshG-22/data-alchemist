@@ -9,6 +9,11 @@ export interface ValidationIssue {
   value?: unknown;
   suggestion?: string;
   fixable?: boolean;
+  autoFix?: {
+    action: string;
+    tasks?: { taskId: string; fromPhase: number; toPhase: number; duration: number; reasoning: string }[];
+    [key: string]: unknown;
+  };
 }
 
 export interface ValidationResult {

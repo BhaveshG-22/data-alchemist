@@ -142,22 +142,26 @@ export function validatePhaseSaturation(context: ValidatorContext): ValidationIs
         data
       );
       
-      issues.push(
-        createValidationIssue(
-          'phase_saturation',
-          `Phase ${phase} is oversaturated: ${demand.totalDuration} duration units demanded vs ${capacity} capacity (${saturationPercentage}%)`,
-          {
-            sheet: 'tasks',
-            row: -1, // Global issue
-            column: 'PreferredPhases',
-            value: phase,
-            type: 'error',
-            suggestion: redistributionPlan.suggestion,
-            fixable: redistributionPlan.fixable,
-            autoFix: redistributionPlan.autoFix,
-          }
-        )
+      const issue = createValidationIssue(
+        'phase_saturation',
+        `Phase ${phase} is oversaturated: ${demand.totalDuration} duration units demanded vs ${capacity} capacity (${saturationPercentage}%)`,
+        {
+          sheet: 'tasks',
+          row: -1, // Global issue
+          column: 'PreferredPhases',
+          value: phase,
+          type: 'error',
+          suggestion: redistributionPlan.suggestion,
+          fixable: redistributionPlan.fixable,
+        }
       );
+      
+      // Add autoFix if available
+      if (redistributionPlan.autoFix) {
+        (issue as any).autoFix = redistributionPlan.autoFix;
+      }
+      
+      issues.push(issue);
     } else if (demand.totalDuration > capacity * 0.8) {
       // Warning for high utilization (>80%)
       const utilizationPercentage = capacity > 0 ? Math.round((demand.totalDuration / capacity) * 100) : 0;

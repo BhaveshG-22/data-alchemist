@@ -27,7 +27,7 @@ const VALIDATORS = [
   validateConcurrencyFeasibility, // DONE - Concurrency constraints validation
   validatePhaseSaturation, // DONE - Phase capacity vs demand validation
   validateCircularCoRun, // DONE - Circular dependency detection
-  validateConflictingRules, // DONE - Business rule conflict detection
+  validateConflictingRules, // TODO: - Business rule conflict detection
 ];
 
 export function runAllValidations(context: ValidatorContext): ValidationResult {
