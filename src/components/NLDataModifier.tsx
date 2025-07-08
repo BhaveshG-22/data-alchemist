@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, MessageSquare, Eye, Check, X, Undo2, Redo2, History, Clock, FileText } from 'lucide-react';
+import { Loader2, MessageSquare, Eye, Check, X, Undo2, Redo2, History, Clock, ChevronDown, ChevronUp } from 'lucide-react';
 import { useDataModificationHistory } from '@/hooks/useDataModificationHistory';
 // import DiffVisualization from './DiffVisualization';
 // import CommandTemplateSelector from './CommandTemplateSelector';
@@ -41,6 +41,7 @@ export default function NLDataModifier({ data, onDataChange, tableName = 'data' 
   const [showHistory, setShowHistory] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
   const [lastCommand, setLastCommand] = useState('');
+  const [previewRowsLimit, setPreviewRowsLimit] = useState(10);
   // const [showTemplates, setShowTemplates] = useState(false);
   
   const {
@@ -205,7 +206,7 @@ export default function NLDataModifier({ data, onDataChange, tableName = 'data' 
         <div className="flex items-center space-x-3 flex-shrink-0 ml-4">
           {lastCommand && !isExpanded && (
             <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full max-w-32 truncate">
-              "{lastCommand}"
+              &quot;{lastCommand}&quot;
             </span>
           )}
           {totalModifications > 0 && !isExpanded && (
@@ -353,7 +354,7 @@ export default function NLDataModifier({ data, onDataChange, tableName = 'data' 
             </CardHeader>
             <CardContent>
               <div className="space-y-2 max-h-64 overflow-y-auto">
-                {getHistoryPreview().map((entry, index) => (
+                {getHistoryPreview().map((entry) => (
                   <div
                     key={entry.id}
                     className={`p-3 rounded-md border text-sm ${
@@ -365,7 +366,7 @@ export default function NLDataModifier({ data, onDataChange, tableName = 'data' 
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
                         <div className="font-medium text-gray-900 mb-1">
-                          "{entry.command}"
+                          &quot;{entry.command}&quot;
                         </div>
                         <div className="text-gray-600 text-xs">
                           {entry.summary}
@@ -413,9 +414,50 @@ export default function NLDataModifier({ data, onDataChange, tableName = 'data' 
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="bg-gray-50 p-3 rounded-md">
-                <p className="text-sm font-medium mb-2">Changes to be made:</p>
-                <pre className="text-xs whitespace-pre-wrap text-gray-700">
-                  {preview.preview}
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-sm font-medium">Changes to be made:</p>
+                  {(() => {
+                    const totalLines = preview.preview.split('\n').length;
+                    const shouldShowSlider = totalLines > 15;
+                    
+                    return shouldShowSlider ? (
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-gray-500">
+                          Showing {Math.min(previewRowsLimit, totalLines)} of {totalLines} rows
+                        </span>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setPreviewRowsLimit(Math.max(10, previewRowsLimit - 10))}
+                            disabled={previewRowsLimit <= 10}
+                          >
+                            <ChevronUp className="h-3 w-3" />
+                          </Button>
+                          <span className="text-xs px-2">{previewRowsLimit}</span>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setPreviewRowsLimit(Math.min(totalLines, previewRowsLimit + 10))}
+                            disabled={previewRowsLimit >= totalLines}
+                          >
+                            <ChevronDown className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </div>
+                    ) : null;
+                  })()}
+                </div>
+                <pre className="text-xs whitespace-pre-wrap text-gray-700 max-h-80 overflow-y-auto">
+                  {(() => {
+                    const lines = preview.preview.split('\n');
+                    const shouldShowSlider = lines.length > 15;
+                    
+                    if (shouldShowSlider) {
+                      return lines.slice(0, previewRowsLimit).join('\n');
+                    }
+                    return preview.preview;
+                  })()}
                 </pre>
               </div>
               
