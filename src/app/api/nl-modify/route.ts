@@ -11,66 +11,137 @@ interface NLModifyRequest {
   tableName?: string;
 }
 
-interface NLModifyResponse {
-  success: boolean;
-  updates?: {
-    target: string;
-    modifications: Array<{
-      operation: 'update' | 'delete' | 'add';
-      rowIndex?: number;
-      rowId?: string;
-      data?: Record<string, unknown>;
-      newRow?: Record<string, unknown>;
-    }>;
-    summary: string;
-  };
-  error?: string;
-  preview?: string;
-}
+const SYSTEM_PROMPT = `You are a data modification assistant. Analyze the user's request and return a simple JSON response.
 
-const SYSTEM_PROMPT = `You are an assistant that helps modify spreadsheet-style data using natural language instructions.
+Available operations:
+- "update": modify existing rows
+- "delete": remove rows  
+- "add": insert new rows
 
-You will receive:
-1. Table data as JSON with headers and rows
-2. A natural language instruction
-
-Your task is to:
-1. Understand the instruction and identify what changes need to be made
-2. Return a structured response with the exact modifications needed
-3. Be conservative - only modify what's explicitly requested
-4. Preserve data types and schema structure
-
-Response format:
+Response format (REQUIRED):
 {
-  "target": "table_name",
-  "modifications": [
+  "operation": "update",
+  "column": "FieldName", 
+  "conditions": [
     {
-      "operation": "update",
-      "rowIndex": 0,
-      "data": { "column": "new_value" }
+      "column": "ColumnName",
+      "operator": "equals" | "not_equals" | "contains" | "not_contains" | "starts_with" | "ends_with" | "greater_than" | "less_than" | "in" | "not_in",
+      "value": "value_to_compare" | ["multiple", "values"]
     }
   ],
-  "summary": "Updated 3 rows: set PriorityLevel to 4 for all clients in GroupB"
+  "newValue": "new_value_for_updates",
+  "summary": "Brief description"
 }
 
-Operations:
-- "update": Modify existing row fields
-- "delete": Remove rows (include rowIndex)
-- "add": Add new rows (include newRow)
+Examples:
 
-Rules:
-1. Use rowIndex (0-based) to identify rows for updates/deletes
-2. For updates, only include fields that actually change
-3. Preserve existing data types (numbers as numbers, strings as strings)
-4. If a row has an ID field, include it in modifications for safety
-5. Be specific about what changed in the summary
-6. If instruction is unclear or would cause data loss, explain the issue
+User: "Set all PriorityLevel to 5"
+{
+  "operation": "update",
+  "column": "PriorityLevel",
+  "conditions": [],
+  "newValue": "5",
+  "summary": "Set all PriorityLevel to 5"
+}
 
-Example data types to preserve:
-- Numbers: keep as numbers (not strings)
-- Arrays: ["item1", "item2"] format
-- Booleans: true/false
-- IDs: usually strings starting with letters`;
+User: "Set PriorityLevel 2 to 4"  
+{
+  "operation": "update",
+  "column": "PriorityLevel",
+  "conditions": [
+    {"column": "PriorityLevel", "operator": "equals", "value": "2"}
+  ],
+  "newValue": "4",
+  "summary": "Update PriorityLevel from 2 to 4"
+}
+
+User: "Set PriorityLevel to 4 for all clients except those already at 5"
+{
+  "operation": "update",
+  "column": "PriorityLevel", 
+  "conditions": [
+    {"column": "PriorityLevel", "operator": "not_equals", "value": "5"}
+  ],
+  "newValue": "4",
+  "summary": "Set PriorityLevel to 4 except those at 5"
+}
+
+User: "Update QualificationLevel to Senior for Backend and QA workers only"
+{
+  "operation": "update",
+  "column": "QualificationLevel",
+  "conditions": [
+    {"column": "Group", "operator": "in", "value": ["Backend", "QA"]}
+  ],
+  "newValue": "Senior", 
+  "summary": "Update Backend and QA workers to Senior"
+}
+
+User: "Delete inactive clients"
+{
+  "operation": "delete",
+  "conditions": [
+    {"column": "Status", "operator": "equals", "value": "inactive"}
+  ],
+  "summary": "Delete inactive clients"
+}
+
+User: "Change tasks with python skills to have communication skills"
+{
+  "operation": "update",
+  "column": "RequiredSkills",
+  "conditions": [
+    {"column": "RequiredSkills", "operator": "contains", "value": "python"}
+  ],
+  "newValue": "communication",
+  "summary": "Update python tasks to require communication skills"
+}
+
+User: "Update tasks containing Development to have RequiredSkills communication"
+{
+  "operation": "update",
+  "column": "RequiredSkills",
+  "conditions": [
+    {"column": "TaskName", "operator": "contains", "value": "Development"}
+  ],
+  "newValue": "communication",
+  "summary": "Update tasks containing Development to require communication skills"
+}
+
+User: "Assign phase 5 to PreferredPhases for all tasks that currently include phase 1 but not phase 3"
+{
+  "operation": "update",
+  "column": "PreferredPhases",
+  "conditions": [
+    {"column": "PreferredPhases", "operator": "contains", "value": "1"},
+    {"column": "PreferredPhases", "operator": "not_contains", "value": "3"}
+  ],
+  "newValue": "add phase 5",
+  "summary": "Assign phase 5 to tasks with phase 1 but not phase 3"
+}
+
+User: "Change all worker group names that start with Dev to Development"
+{
+  "operation": "update",
+  "column": "Group",
+  "conditions": [
+    {"column": "Group", "operator": "starts_with", "value": "Dev"},
+    {"column": "Group", "operator": "not_equals", "value": "Development"}
+  ],
+  "newValue": "Development",
+  "summary": "Change group names starting with Dev to Development"
+}
+
+Key patterns to recognize:
+- "enterprise clients" = filter by GroupTag=enterprise, update clients
+- "Frontend workers" = filter by Group=Frontend, update workers  
+- "Development tasks" = filter by Category=Development, update tasks
+- "Premium clients" = filter by Type=Premium, update clients
+- "inactive tasks" = filter by Status=inactive
+- "tasks with X" = filter by RequiredSkills contains X
+- "clients in GroupB" = filter by GroupTag=GroupB
+
+Return ONLY valid JSON, no markdown or extra text.`;
 
 export async function POST(request: NextRequest) {
   try {
@@ -96,17 +167,12 @@ export async function POST(request: NextRequest) {
       openAIApiKey: process.env.OPENAI_API_KEY,
     });
 
-    const userPrompt = `Table: ${tableName}
-Headers: ${data.headers.join(', ')}
-
-Data (showing first 10 rows for context):
-${JSON.stringify(data.rows.slice(0, 10), null, 2)}
-
+    const userPrompt = `Available columns: ${data.headers.join(', ')}
 Total rows: ${data.rows.length}
 
-Instruction: ${instruction}
+User instruction: ${instruction}
 
-Please provide the modifications needed to fulfill this instruction. Be precise and conservative.`;
+Analyze this instruction and respond with the exact JSON format specified.`;
 
     const messages = [
       new SystemMessage(SYSTEM_PROMPT),
@@ -116,56 +182,129 @@ Please provide the modifications needed to fulfill this instruction. Be precise 
     const response = await llm.invoke(messages);
     const responseContent = response.content as string;
 
-    let parsedResponse;
+    let aiResponse;
     try {
       // Extract JSON from response if it's wrapped in markdown or other text
       const jsonMatch = responseContent.match(/\{[\s\S]*\}/);
       const jsonStr = jsonMatch ? jsonMatch[0] : responseContent;
-      parsedResponse = JSON.parse(jsonStr);
+      aiResponse = JSON.parse(jsonStr);
+      
+      console.log('AI Response:', aiResponse);
     } catch (parseError) {
+      console.error('Parse error:', parseError);
       return NextResponse.json({
         success: false,
         error: `Failed to parse AI response: ${responseContent}`,
       }, { status: 500 });
     }
 
-    // Validate response structure
-    if (!parsedResponse.modifications || !Array.isArray(parsedResponse.modifications)) {
+    // Validate required fields
+    if (!aiResponse.operation) {
       return NextResponse.json({
         success: false,
-        error: 'Invalid response format from AI',
-      }, { status: 500 });
+        error: 'AI response missing required field: operation',
+      }, { status: 400 });
     }
 
-    // Validate modifications
-    for (const mod of parsedResponse.modifications) {
-      if (!['update', 'delete', 'add'].includes(mod.operation)) {
-        return NextResponse.json({
-          success: false,
-          error: `Invalid operation: ${mod.operation}`,
-        }, { status: 400 });
+
+    // Generate modifications based on conditions array
+    const modifications = [];
+    
+    for (let i = 0; i < data.rows.length; i++) {
+      const row = data.rows[i];
+      let shouldModify = true;
+
+      // Apply all conditions (AND logic)
+      if (aiResponse.conditions && aiResponse.conditions.length > 0) {
+        for (const condition of aiResponse.conditions) {
+          const rowValue = String(row[condition.column] || '');
+          const conditionValue = condition.value;
+          
+          let conditionMet = false;
+          
+          switch (condition.operator) {
+            case 'equals':
+              conditionMet = rowValue === String(conditionValue);
+              break;
+            case 'not_equals':
+              conditionMet = rowValue !== String(conditionValue);
+              break;
+            case 'contains':
+              conditionMet = rowValue.toLowerCase().includes(String(conditionValue).toLowerCase());
+              break;
+            case 'not_contains':
+              conditionMet = !rowValue.toLowerCase().includes(String(conditionValue).toLowerCase());
+              break;
+            case 'starts_with':
+              conditionMet = rowValue.toLowerCase().startsWith(String(conditionValue).toLowerCase());
+              break;
+            case 'ends_with':
+              conditionMet = rowValue.toLowerCase().endsWith(String(conditionValue).toLowerCase());
+              break;
+            case 'greater_than':
+              conditionMet = parseFloat(rowValue) > parseFloat(String(conditionValue));
+              break;
+            case 'less_than':
+              conditionMet = parseFloat(rowValue) < parseFloat(String(conditionValue));
+              break;
+            case 'in':
+              if (Array.isArray(conditionValue)) {
+                conditionMet = conditionValue.some(val => String(val) === rowValue);
+              } else {
+                conditionMet = rowValue === String(conditionValue);
+              }
+              break;
+            case 'not_in':
+              if (Array.isArray(conditionValue)) {
+                conditionMet = !conditionValue.some(val => String(val) === rowValue);
+              } else {
+                conditionMet = rowValue !== String(conditionValue);
+              }
+              break;
+            default:
+              conditionMet = false;
+          }
+          
+          if (!conditionMet) {
+            shouldModify = false;
+            break; // AND logic - if any condition fails, don't modify
+          }
+        }
       }
 
-      if ((mod.operation === 'update' || mod.operation === 'delete') && 
-          (typeof mod.rowIndex !== 'number' || mod.rowIndex < 0 || mod.rowIndex >= data.rows.length)) {
-        return NextResponse.json({
-          success: false,
-          error: `Invalid rowIndex: ${mod.rowIndex}`,
-        }, { status: 400 });
+      if (shouldModify) {
+        if (aiResponse.operation === 'update') {
+          modifications.push({
+            operation: 'update',
+            rowIndex: i,
+            data: { [aiResponse.column]: aiResponse.newValue },
+          });
+        } else if (aiResponse.operation === 'delete') {
+          modifications.push({
+            operation: 'delete',
+            rowIndex: i,
+          });
+        }
       }
     }
 
     // Generate preview
-    const preview = generatePreview(parsedResponse.modifications, data);
+    const preview = generatePreview(modifications, data);
 
     return NextResponse.json({
       success: true,
       updates: {
-        target: parsedResponse.target || tableName,
-        modifications: parsedResponse.modifications,
-        summary: parsedResponse.summary || 'Data modifications prepared',
+        target: tableName,
+        modifications,
+        summary: aiResponse.summary || `Applied ${modifications.length} modifications`,
       },
       preview,
+      debug: process.env.NODE_ENV === 'development' ? {
+        aiResponse: responseContent,
+        parsedResponse: aiResponse,
+        totalRows: data.rows.length,
+        modificationsGenerated: modifications.length
+      } : undefined
     });
 
   } catch (error) {
